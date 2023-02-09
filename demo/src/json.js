@@ -9,13 +9,13 @@ export async function *generateJSONFragments(source, options = {}) {
     acceptable = [],    
   } = options;
   const decoder = new TextDecoder();
-  let allowRoot = null;
+  let allowPartialRoot = null;
   if (acceptable !== false) {
-    allowRoot = {};
+    allowPartialRoot = {};
     for (const path of Array.isArray(acceptable) ? acceptable : [ acceptable ]) {
       if (path) {
         const names = path.split('.');
-        let parent = allowRoot;
+        let parent = allowPartialRoot;
         for (const name of names) {
           let node = parent[name];
           if (!node) {
@@ -26,10 +26,10 @@ export async function *generateJSONFragments(source, options = {}) {
       }
     }
   }
-  let allowCurrent = null, allowStack = [], closeStack = [];
   let index = 0, safeIndex = 0, reportedIndex = 0; 
   let keyStart = 0, keyEnd = 0;
-  let inString = false, inObject = false, escaped = false, syntaxError = false;
+  let allowPartial = null, openBracket = 0, closeBracket = 0, stack = [];
+  let inString = false, escaped = false, syntaxError = false;
   let buffer;
   for await (buffer of generatePartialViews(source)) {
     if (syntaxError) {
@@ -53,60 +53,68 @@ export async function *generateJSONFragments(source, options = {}) {
           if (c === DOUBLE_QUOTE) {
             keyStart = index;
             inString = true;
-          } else if (c === LEFT_CURLY || c === LEFT_BRACKET) {
-            if (inObject) {
-              allowStack.push(allowCurrent);
-              const nameBuffer = buffer.subarray(keyStart, keyEnd);
-              const string = decoder.decode(nameBuffer);
-              const name = JSON.parse(string);
-              allowCurrent = allowCurrent[name]; 
-            } else if (allowStack.length === 0) {
-              allowCurrent = allowRoot;
-            }
-            inObject = (c === LEFT_CURLY);
-            closeStack.push(inObject ? RIGHT_CURLY : RIGHT_BRACKET);
-          } else if (c === RIGHT_CURLY || c === RIGHT_BRACKET) {
-            if (closeStack.length > 0) {
-              closeStack.pop();
+          } else if (c === LEFT_CURLY || c === LEFT_SQUARE) {
+            let key;
+            if (openBracket === LEFT_CURLY) {
+              const keyBuffer = buffer.subarray(keyStart, keyEnd);
+              key = JSON.parse(decoder.decode(keyBuffer));
+            } else if (openBracket === LEFT_SQUARE) {
+              key = '#';
             } else {
-              syntaxError = true;
-              continue;
+              // root level object
+              key = '';
             }
-            inObject = (closeStack[closeStack.length - 1] === RIGHT_CURLY);
-            if (inObject) {
-              allowCurrent = allowStack.pop();
-              if (allowCurrent) {
-                safeIndex = index + 1;
-              }
+            // save parent object context
+            stack.push({ allowPartial, openBracket, closeBracket });
+            // start new context
+            allowPartial = (key) ? allowPartial?.[key] ?? allowPartial?.['*'] : allowPartialRoot; 
+            openBracket = c;
+            closeBracket = (c === LEFT_CURLY) ? RIGHT_CURLY : RIGHT_SQUARE;
+            //console.log(`${key} => ${!!allowCurrent}`);
+          } else if (c === RIGHT_CURLY || c === RIGHT_SQUARE) {
+            if (stack.length === 0) {
+              throw new Error(`Unexpected bracket`);
+            }
+            // restore parent object context
+            ({ allowPartial, openBracket, closeBracket } = stack.pop());
+            // safe to cleave JSON after close bracket
+            if (allowPartial) {
+              safeIndex = index + 1;
             }
           } else if (c === COMMA) {
-            if (allowCurrent) {
+            if (stack.length === 0) {
+              throw new Error(`Unexpected comma`);
+            }
+            // safe to cleave JSON before comma
+            if (allowPartial) {
               safeIndex = index;
             }
-          }
-          if (safeIndex !== reportedIndex) {
-            const strBuffer = buffer.subarray(0, safeIndex);
-            const str = decoder.decode(strBuffer);
-            const end = decoder.decode(new Uint8Array(closeStack).reverse());
-            yield [ str, end ];
-            reportedIndex = safeIndex;  
           }
         }
         index++;
       } 
     } catch (err) {
+      console.error(err);
       syntaxError = true;
     }
-  }
+    if (safeIndex !== reportedIndex) {
+      const strBuffer = buffer.subarray(0, safeIndex);
+      const closeBrackets = new Uint8Array(stack.slice(1).map(s => s.closeBracket).reverse());
+      const str = decoder.decode(strBuffer);
+      const end = decoder.decode(closeBrackets);
+      yield [ str, end ];
+      reportedIndex = safeIndex;  
+    }
+}
   yield [ decoder.decode(buffer), '' ];
 }
 
 const DOUBLE_QUOTE = 0x22;
 const BACK_SLASH = 0x5C;
 const LEFT_CURLY = 0x7B;
-const LEFT_BRACKET = 0x5B;
+const LEFT_SQUARE = 0x5B;
 const RIGHT_CURLY = 0x7D;
-const RIGHT_BRACKET = 0x5D;
+const RIGHT_SQUARE = 0x5D;
 const COMMA = 0x2C;
 
 export async function* generatePartialViews(iterator) {
