@@ -7,11 +7,27 @@ export default function App() {
   const [ input, setInput ] = useState(() => JSON.stringify(example.object, undefined, 2));
   const [ output, setOutput ] = useState();
   const [ url, setURL ] = useState('');
+  const [ sourceURL, setSourceURL ] = useState('');
   const [ acceptableList, setAcceptableList ] = useState(example.acceptable);
   const [ chunking, setChunking ] = useState('size');
-  const [ chunkSize, setChunkSize ] = useState(`10`);
+  const [ chunkSize, setChunkSize ] = useState(`16`);
   const [ chunkList, setChunkList ] = useState(``);
 
+  useEffect(() => {
+    if (sourceURL) {
+      const controller = new AbortController();
+      const { signal } = controller;
+      (async () => {
+        const res = await fetch(sourceURL);
+        if (res.status !== 200) {
+          throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        }
+        const json = await res.json();
+        return JSON.stringify(json, undefined, 2);
+      })().then(setInput).catch(err => console.error(err));
+      return () => controller.abort();
+    }
+  }, [ sourceURL ]);
   useEffect(() => {
     const encoder = new TextEncoder();
     const data = encoder.encode(input);
@@ -38,8 +54,8 @@ export default function App() {
       try {
         let offset = 0, key = 1;
         let even = false;
-        for await (const [ str ] of generateJSONFragments(source, { acceptable })) {
-          const title = `fragment ${key}`;
+        for await (const [ str, end ] of generateJSONFragments(source, { acceptable })) {
+          const title = `fragment ${key} + ${end.replace(/(.)/g, '$1  ')}`;
           const style = even ? { color: '#fff', backgroundColor: '#000' } : undefined;
           const span = <span {...{key, style, title}}>{str.substr(offset)}</span>;
           segments.push(span);
@@ -48,7 +64,7 @@ export default function App() {
           key++;
         }
       } catch (e) {
-    
+        console.error(e)
       }
       return segments;
     })().then(setOutput);
@@ -71,7 +87,7 @@ export default function App() {
           <label>JSON URL:</label>
           <div className="row">
             <input id="url" value={url} onChange={e => setURL(e.target.value)} />
-            <button disabled={!url.trim()}>Fetch</button>
+            <button disabled={!url.trim()} onClick={e => setSourceURL(url)}>Fetch</button>
           </div>
           <label>Acceptable:</label>
           <textarea id="acceptable" value={acceptableList} onChange={e => setAcceptableList(e.target.value)} autoCorrect="off" spellCheck={false} />

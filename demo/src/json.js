@@ -1,4 +1,12 @@
-export async function* generateJSON(source, options) {
+const DOUBLE_QUOTE = 0x22;
+const BACK_SLASH = 0x5C;
+const LEFT_CURLY = 0x7B;
+const LEFT_SQUARE = 0x5B;
+const RIGHT_CURLY = 0x7D;
+const RIGHT_SQUARE = 0x5D;
+const COMMA = 0x2C;
+
+export async function* generateJSON(source, options = {}) {
   for await (const [ str, end ] of generateJSONFragments(source, options)) {
     yield JSON.parse(str + end);
   }
@@ -9,13 +17,13 @@ export async function *generateJSONFragments(source, options = {}) {
     acceptable = [],    
   } = options;
   const decoder = new TextDecoder();
-  let allowPartialRoot = null;
+  let allowPartial = { root: null };
   if (acceptable !== false) {
-    allowPartialRoot = {};
+    const root = allowPartial.root = {};
     for (const path of Array.isArray(acceptable) ? acceptable : [ acceptable ]) {
       if (path) {
         const names = path.split('.');
-        let parent = allowPartialRoot;
+        let parent = root;
         for (const name of names) {
           let node = parent[name];
           if (!node) {
@@ -26,11 +34,11 @@ export async function *generateJSONFragments(source, options = {}) {
       }
     }
   }
-  let index = 0, safeIndex = 0, reportedIndex = 0; 
   let keyStart = 0, keyEnd = 0;
-  let allowPartial = null, openBracket = 0, closeBracket = 0, stack = [];
+  let openBracket = 0, closeBracket = 0, stack = [];
   let inString = false, escaped = false, syntaxError = false;
-  let buffer;
+  let safeIndex = 0, safeIndexBrackets = null, reportedIndex = 0;
+  let index = 0, buffer;
   for await (buffer of generatePartialViews(source)) {
     if (syntaxError) {
       continue;
@@ -61,16 +69,14 @@ export async function *generateJSONFragments(source, options = {}) {
             } else if (openBracket === LEFT_SQUARE) {
               key = '#';
             } else {
-              // root level object
-              key = '';
+              key = 'root';
             }
             // save parent object context
             stack.push({ allowPartial, openBracket, closeBracket });
             // start new context
-            allowPartial = (key) ? allowPartial?.[key] ?? allowPartial?.['*'] : allowPartialRoot; 
+            allowPartial = allowPartial?.[key] ?? allowPartial?.['*']; 
             openBracket = c;
             closeBracket = (c === LEFT_CURLY) ? RIGHT_CURLY : RIGHT_SQUARE;
-            //console.log(`${key} => ${!!allowCurrent}`);
           } else if (c === RIGHT_CURLY || c === RIGHT_SQUARE) {
             if (stack.length === 0) {
               throw new Error(`Unexpected bracket`);
@@ -80,6 +86,7 @@ export async function *generateJSONFragments(source, options = {}) {
             // safe to cleave JSON after close bracket
             if (allowPartial) {
               safeIndex = index + 1;
+              safeIndexBrackets = [ ...stack.map(c => c.closeBracket), closeBracket ];
             }
           } else if (c === COMMA) {
             if (stack.length === 0) {
@@ -88,6 +95,7 @@ export async function *generateJSONFragments(source, options = {}) {
             // safe to cleave JSON before comma
             if (allowPartial) {
               safeIndex = index;
+              safeIndexBrackets = [ ...stack.map(c => c.closeBracket), closeBracket ];
             }
           }
         }
@@ -99,23 +107,18 @@ export async function *generateJSONFragments(source, options = {}) {
     }
     if (safeIndex !== reportedIndex) {
       const strBuffer = buffer.subarray(0, safeIndex);
-      const closeBrackets = new Uint8Array(stack.slice(1).map(s => s.closeBracket).reverse());
+      const endBuffer = new Uint8Array(safeIndexBrackets.filter(b => !!b)).reverse();
       const str = decoder.decode(strBuffer);
-      const end = decoder.decode(closeBrackets);
+      const end = decoder.decode(endBuffer);
       yield [ str, end ];
       reportedIndex = safeIndex;  
     }
+  }
+  if (reportedIndex < buffer.length) {
+    // extra whitespaces perhaps
+    yield [ decoder.decode(buffer), '' ];
+  }
 }
-  yield [ decoder.decode(buffer), '' ];
-}
-
-const DOUBLE_QUOTE = 0x22;
-const BACK_SLASH = 0x5C;
-const LEFT_CURLY = 0x7B;
-const LEFT_SQUARE = 0x5B;
-const RIGHT_CURLY = 0x7D;
-const RIGHT_SQUARE = 0x5D;
-const COMMA = 0x2C;
 
 export async function* generatePartialViews(iterator) {
   let buffer = new Uint8Array(0);
