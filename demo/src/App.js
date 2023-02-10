@@ -2,28 +2,39 @@ import { useEffect, useState } from 'react';
 import { generateJSON } from './json.js';
 import * as example from './example.js';
 import './css/App.css';
-import { merge } from './object-merge.js';
 
 export default function App() {
   const [ input, setInput ] = useState(() => JSON.stringify(example.object, undefined, 2));
   const [ output, setOutput ] = useState();
-  const [ url, setURL ] = useState('');
+  const [ url, setURL ] = useState('posts.json');
   const [ sourceURL, setSourceURL ] = useState('');
-  const [ acceptableList, setAcceptableList ] = useState(example.acceptable);
-  const [ chunkSize, setChunkSize ] = useState(`15`);
-
+  const [ sourceError, setSourceError ] = useState();
+  const [ partialList, setPartialList ] = useState(example.partial);
+  const [ chunkSize, setChunkSize ] = useState(`16`);
+  
   useEffect(() => {
     if (sourceURL) {
       const controller = new AbortController();
-      const { signal } = controller;
+      const { signal } = controller;      
       (async () => {
-        const res = await fetch(sourceURL);
-        if (res.status !== 200) {
-          throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        try {
+          const res = await fetch(sourceURL, { signal });
+          if (res.status !== 200) {
+            throw new Error(`HTTP ${res.status} - ${res.stateText}`);
+          }
+          const data = await res.json();
+          const text = JSON.stringify(data, undefined, 2);
+          setInput(text);
+          setSourceError(null);
+          if (text.length >= 102400) {
+            setChunkSize(s => Math.max(s, 1024));
+          }
+        } catch (err) {
+          setSourceError(err);
+        } finally {
+          setSourceURL('');
         }
-        const json = await res.json();
-        return JSON.stringify(json, undefined, 2);
-      })().then(setInput).catch(err => console.error(err));
+      })();
       return () => controller.abort();
     }
   }, [ sourceURL ]);
@@ -35,7 +46,7 @@ export default function App() {
     for (let i = 0; i < data.length; i += size) {
       chunks.push(data.subarray(i, i + size));
     }
-    const acceptable = acceptableList.split(/\r?\n/).filter(s => !!s);
+    const partial = partialList.split(/\r?\n/).filter(s => !!s);
     const source = (async function*() {
       for (const chunk of chunks) {
         yield chunk;
@@ -44,7 +55,7 @@ export default function App() {
     (async () => {
       const spans = [];
       try {
-        const options = { acceptable, yieldClosingBrackets: true };
+        const options = { partial, yieldClosingBrackets: true };
         let text;
         const segments = [];
         for await (const [ object, end ] of generateJSON(source, options)) {
@@ -60,7 +71,7 @@ export default function App() {
         let startOffset = 0;
         for (const { endOffset, end } of segments) {
           const title = `fragment ${key} + ${end.replace(/(.)/g, '$1  ')}`;
-          const style = (key & 1) ? { color: '#fff', backgroundColor: '#000' } : undefined;
+          const style = (key & 1) ? { backgroundColor: '#ddd' } : undefined;
           const segmentText = text.substring(startOffset, endOffset);
           const span = <span {...{key, style, title}}>{segmentText}</span>;
           spans.push(span);
@@ -72,29 +83,29 @@ export default function App() {
       }
       setOutput(spans);
     })();
-  }, [ input, chunkSize, acceptableList ]);
+  }, [ input, chunkSize, partialList ]);
 
   return (
     <div className="App">
       <div id="row1" className="row">
         <div id="inputCell" className="cell">
           <label>Input:</label>
-          <textarea id="input" value={input} onChange={e => setInput(e.target.value)} autoCorrect="off" spellCheck={false} />
+          <textarea id="input" value={input} onChange={e => setInput(e.target.value)} onScroll={e => matchScroll(e.target, 'output')} spellCheck={false} />
         </div>
         <div id="outputCell" className="cell">
           <label>Output:</label>
-          <div id="output">{output}</div>
+          <div id="output" onScroll={e => matchScroll(e.target, 'input')}>{output}</div>
         </div>
       </div>
       <div id="row2" className="row">
         <div id="inputOptionsCell" className="cell">
           <label>JSON URL:</label>
           <div className="row">
-            <input id="url" value={url} onChange={e => setURL(e.target.value)} />
+            <input id="url" className={sourceError && 'error'} title={sourceError?.message} value={url} onChange={e => setURL(e.target.value)} spellCheck={false} />
             <button disabled={!url.trim()} onClick={e => setSourceURL(url)}>Fetch</button>
           </div>
-          <label>Acceptable:</label>
-          <textarea id="acceptable" value={acceptableList} onChange={e => setAcceptableList(e.target.value)} autoCorrect="off" spellCheck={false} />
+          <label>Partial:</label>
+          <textarea id="partial" value={partialList} onChange={e => setPartialList(e.target.value)} spellCheck={false} />
         </div>
         <div id="outputOptionsCell" className="cell">
           <label>Chunk size:</label>
@@ -105,4 +116,11 @@ export default function App() {
       </div>
     </div>
   );
+}
+
+function matchScroll(el, targetId) {
+  const target = document.getElementById(targetId);
+  if (target) {
+    target.scrollTop = el.scrollTop;
+  }
 }

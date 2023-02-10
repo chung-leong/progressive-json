@@ -1,4 +1,4 @@
-export const acceptable = 'results';
+export const partial = 'results';
 export const object = {
   count: 82,
   next: "https://swapi.dev/api/people/?page=2",

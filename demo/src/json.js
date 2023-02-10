@@ -103,13 +103,11 @@ export async function *generateJSON(source, options = {}) {
           safeEndIndex = index + safeOffset;
           // construct closing sequence
           closingSequence = [];
-          for (const { closeBracket } of stack) {
-            if (closeBracket) {
-              closingSequence.unshift(closeBracket === RIGHT_CURLY ? '}' : ']');
+          for (const c of [ ...stack.map(c => c.closeBracket), closeBracket ]) {
+            if (c) {
+              const cb = (c === RIGHT_CURLY) ? '}' : ']';
+              closingSequence.unshift(cb);
             }
-          }
-          if (closeBracket) {
-            closingSequence.unshift(closeBracket === RIGHT_CURLY ? '}' : ']');
           }
         }
       }
@@ -118,15 +116,10 @@ export async function *generateJSON(source, options = {}) {
     if (safeEndIndex > 0) {
       const strBuffer = buffer.subarray(0, safeEndIndex);
       // remove any leading comma
-      const str = decoder.decode(strBuffer).replace(/\s*,\s*/, '');
+      const str = decoder.decode(strBuffer).replace(/^\s*,\s*/, '');
       const start = openingSequence.join('');
       const end = closingSequence.join('');
-      let result;
-      try {
-        result = JSON.parse(start + str + end);
-      } catch (err) {
-        result = {};
-      }
+      let result = JSON.parse(start + str + end);
       if (prevResult) {
         // merge result into previous result
         result = merge(prevResult, result, openingSequence.length);
@@ -140,7 +133,7 @@ export async function *generateJSON(source, options = {}) {
       // construct opening sequence for the next chunk
       openingSequence = [];
       for (const cb of closingSequence) {
-        let ob = cb === '}' ? '{' : '[';
+        let ob = (cb === '}') ? '{' : '[';
         if (ob === '{' && openingSequence.length > 0) {
           // assign first property to dummy key
           ob += '"":';

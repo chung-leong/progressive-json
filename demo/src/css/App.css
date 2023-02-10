@@ -54,7 +54,7 @@ label {
   border: 1px solid black;
   height: 0;
   white-space: pre;
-  overflow: scroll;
+  overflow: auto;
   padding: 2px;
 }
 

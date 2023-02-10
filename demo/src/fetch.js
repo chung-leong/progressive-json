@@ -2,36 +2,43 @@ import { generateJSON } from './json.js';
 
 export async function* fetchProgressiveJSON(url, options) {
   const {
-    acceptable,
-    ...fetchOptions,
+    partial,
+    ...fetchOptions
   } = options;
-  let finished = false;
-  while (!finished) {
+  let finished = false, attempts = 0;
+  while (!finished && attempts < 10) {
     try {
-      const source = fetchChunks(url, options);
-      for await (const object of generateJSON(source, { acceptable })) {
+      const source = fetchChunks(url, fetchOptions);
+      for await (const object of generateJSON(source, { partial })) {
         yield object;
-      }  
+      }
+      finished = true;
     } catch (err) {
       if (err instanceof HTTPError && err.status === 406) {
-        // file has changed while we're retrieving it--start over
+        // file changed while we're retrieving it--start over
         continue;
       }
       throw err;
     }
+    attempts++;
   }
 }
 
-export async function* fetchChunks(url, fetchOptions) {
+export async function* fetchChunks(url, options) {
   const {
-    chunkSize,
+    chunkSize = 50 * 1024,
+    maxAttempts = Infinity,
+    retryInterval = 1000 * 30,
     pause,
-    ...fetchOptions,
+    ...fetchOptions
   } = options;
-  let finished = false, offset = 0, etag = '', size = -1;
-  while (!finished) {
+  let finished = false, offset = 0, etag = '', size = -1, attempts = 0;
+  while (!finished && attempts < maxAttempts) {
     try {
-      const headers = fetchOptions.options = { ...fetchOptions.options };
+      if (!(chunkSize > 0)) {
+        throw new Error(`Invalid chunk size: ${chunkSize}`);
+      }
+      const headers = fetchOptions.headers = { ...fetchOptions.headers };
       if (etag) {
         headers['if-match'] = etag;
       }
@@ -40,15 +47,13 @@ export async function* fetchChunks(url, fetchOptions) {
       if (res.status !== 206) {
         throw await createHTTPError(res);
       }
+      etag = res.headers.get('etag');
       if (!etag) {
-        etag = res.headers.get('etag');
-        if (!etag) {
-          throw new Error(`Resource does not have an etag ${url}`);
-        }
+        throw new Error(`Resource does not have an etag ${url}`);
       }
       const range = res.headers.get('content-range');
-      const m = /bytes\s+(\d+)-(\d+)\/(\d+)/i.exec(range);
-      if (m) {
+      const m = /bytes\s+(\d+)\-(\d+)\/(\d+)/i.exec(range);
+      if (!m) {
         throw new Error(`Invald range header: ${range}`);
       }
       offset = parseInt(m[2]) + 1;
@@ -56,17 +61,18 @@ export async function* fetchChunks(url, fetchOptions) {
       for await (const chunk of generateStreamChunks(res.body)) {
         yield chunk;
       }
-      if (offset === size - 1) {
+      if (offset === size) {
         finished = true;
       } else {
         // if the caller passed a pause function, then we wait still for 
         // the promise to be fulfilled
         await pause?.();
-      }
+      }   
     } catch (err) {
       // TODO: see if error is temporary
       throw err;
     }
+    attempts++;
   }
 }
 
@@ -82,7 +88,7 @@ export async function* generateStreamChunks(stream) {
   }
 }
 
-async function createHTTPError(res) {
+export async function createHTTPError(res) {
   const error = new HTTPError(`HTTP ${res.status} - ${res.statusText}`);
   error.status = res.status;
   error.statusText = res.statusText;
@@ -96,4 +102,4 @@ async function createHTTPError(res) {
   return error;
 }
 
-class HTTPError extends Error;
+class HTTPError extends Error {};
