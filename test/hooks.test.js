@@ -66,6 +66,7 @@ describe('React hooks', function() {
       while (requests < Math.ceil(data.length / 5)) {
         await delay(10);
       }
+      await delay(30);
       expect(objects).to.have.lengthOf(5);
       expect(objects[0].results).to.have.lengthOf(1);
       expect(objects[1].results).to.have.lengthOf(2);

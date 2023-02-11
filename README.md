@@ -1,1 +1,1 @@
-# progressive-json
+# Progressive-json ![ci](https://img.shields.io/github/actions/workflow/status/chung-leong/progressive-json/node.js.yml?branch=main&label=Node.js%20CI&logo=github) ![nycrc config on GitHub](https://img.shields.io/nycrc/chung-leong/progressive-json)
