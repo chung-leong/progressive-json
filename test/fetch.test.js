@@ -3,20 +3,20 @@ import { createServer } from 'http';
 
 import {
   fetchChunks,
-  fetchProgressiveJSON,
+  fetchJSON,
 } from '../src/fetch.js';
 
-describe('Fetch functions', function() {
-  const server = createServer((req, res) => server.handler(req, res));
+describe('Data retrieval', function() {
+  const server = createServer((req, res) => server.handler?.(req, res));
   before(function(done) {
     server.listen(0, done);
-  });
+  })
   after(function(done) {
     server.close(done);
-  });
+  })
   afterEach(function() {
     server.handler = null;
-  });
+  })
   describe('#fetchChunks', function() {
     it('should fetch the remote data', async function() {
       const data = 'This is a test';
@@ -193,7 +193,7 @@ describe('Fetch functions', function() {
       expect(error).to.be.an('error');
     })
   })
-  describe('#fetchProgressiveJSON', function() {
+  describe('#fetchJSON', function() {
     it('should retrieve JSONs progressively', async function() {
       const original = {
         results: [
@@ -219,7 +219,7 @@ describe('Fetch functions', function() {
       const { port } = server.address();
       const url = `http://localhost:${port}/resource`;
       const objects = [];
-      for await (const object of fetchProgressiveJSON(url, { partial: 'results', chunkSize: 3 })) {
+      for await (const object of fetchJSON(url, { partial: 'results', chunkSize: 3 })) {
         objects.push(object);
       }
       expect(objects.length).to.equal(6);
@@ -268,7 +268,7 @@ describe('Fetch functions', function() {
           switched = true;
         }
       };
-      for await (const object of fetchProgressiveJSON(url, { partial: 'results', chunkSize: 3, pause })) {
+      for await (const object of fetchJSON(url, { partial: 'results', chunkSize: 3, pause })) {
         objects.push(object);
       }
       expect(objects[0]).to.eql({ results: [ { a: 1, b: 2, c: 3 } ] });
@@ -294,7 +294,7 @@ describe('Fetch functions', function() {
       const objects = [];
       let error;
       try {
-        for await (const object of fetchProgressiveJSON(url, { partial: 'results', chunkSize: 3 })) {
+        for await (const object of fetchJSON(url, { partial: 'results', chunkSize: 3 })) {
           objects.push(object);
         }  
       } catch (err) {

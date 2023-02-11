@@ -1,16 +1,28 @@
 import { generateJSON } from './parse.js';
 
-export async function* fetchProgressiveJSON(url, options = {}) {
+export async function* fetchJSON(url, options = {}) {
   const {
     partial,
+    pause,
     ...fetchOptions
   } = options;
+  let yielded = false;
+  if (pause) {
+    // pause only after something has been yielded by generateJSON()
+    fetchOptions.pause = () => {
+      if (yielded) {
+        yielded = false;
+        return pause();
+      }
+    };
+  }
   let restarts = 0;
   for (;;) {
     try {
       const source = fetchChunks(url, fetchOptions);
       for await (const object of generateJSON(source, { partial })) {
         yield object;
+        yielded = true;
       }
       break;
     } catch (err) {

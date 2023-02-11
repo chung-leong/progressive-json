@@ -9,8 +9,8 @@ import {
 
 describe('Parsing files from test suite', function() {
   // JSON files from https://github.com/nst/JSONTestSuite
-  addFolder(resolve('./test_parsing'));
-  addFolder(resolve('./test_transform'));
+  describe('#test_parsing', () => addFolder(resolve('./test_parsing')))
+  describe('#test_transform', () => addFolder(resolve('./test_transform')))
 })
 
 function addFolder(path) {
