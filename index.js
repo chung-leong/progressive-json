@@ -3,4 +3,4 @@ export {
 } from './src/fetch.js';
 export {
   generateJSON
-} from './src/json.js';
+} from './src/parse.js';

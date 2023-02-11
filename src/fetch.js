@@ -1,12 +1,12 @@
-import { generateJSON } from './json.js';
+import { generateJSON } from './parse.js';
 
 export async function* fetchProgressiveJSON(url, options = {}) {
   const {
     partial,
     ...fetchOptions
   } = options;
-  let attempts = 0;
-  while (attempts++ < 10) {
+  let restarts = 0;
+  for (;;) {
     try {
       const source = fetchChunks(url, fetchOptions);
       for await (const object of generateJSON(source, { partial })) {
@@ -14,10 +14,12 @@ export async function* fetchProgressiveJSON(url, options = {}) {
       }
       break;
     } catch (err) {
-      if (err instanceof HTTPError && err.status === 406) {
-        // file changed while we're retrieving it--start over
-        continue;
-      }
+      if (++restarts < 10) {
+        if (err instanceof HTTPError && err.status === 406) {
+          // file changed while we're retrieving it--start over
+          continue;
+        }  
+      }        
       throw err;
     }
   }
@@ -31,10 +33,10 @@ export async function* fetchChunks(url, options = {}) {
     pause,
     ...fetchOptions
   } = options;
-  let offset = 0, etag = '', size = -1, attempts = 0;
-  while (attempts++ < maxAttempts) {
+  let offset = 0, etag = '', size = -1, failures = 0;
+  for (;;) {
     try {
-      if (attempts > 1) {
+      if (failures > 0) {
         await new Promise(r => setTimeout(r, retryInterval));        
       }
       if (chunkSize > 0) {
@@ -45,7 +47,7 @@ export async function* fetchChunks(url, options = {}) {
         headers['range'] = `bytes=${offset}-${offset + chunkSize - 1}`;
         const res = await fetch(url, fetchOptions);
         if (res.status !== 206) {
-          throw await createHTTPError(res);
+          throw new HTTPError(res);
         }
         etag = res.headers.get('etag');
         if (!etag) {
@@ -54,14 +56,14 @@ export async function* fetchChunks(url, options = {}) {
         const range = res.headers.get('content-range');
         const m = /bytes\s+(\d+)-(\d+)\/(\d+)/i.exec(range);
         if (!m) {
-          throw new Error(`Invald range header: ${range}`);
+          throw new Error(`Invald content range header: ${range}`);
         }
         offset = parseInt(m[2]) + 1;
         size = parseInt(m[3]);
         for await (const chunk of generateStreamChunks(res.body)) {
           yield chunk;
         }
-        if (offset === size) {
+        if (offset >= size) {
           break;
         } else {
           // if the caller passed a pause function, then we wait still for 
@@ -71,7 +73,7 @@ export async function* fetchChunks(url, options = {}) {
       } else {
         const res = await fetch(url, fetchOptions);
         if (res.status !== 200) {
-          throw await createHTTPError(res);
+          throw new HTTPError(res);
         }
         for await (const chunk of generateStreamChunks(res.body)) {
           yield chunk;
@@ -79,8 +81,10 @@ export async function* fetchChunks(url, options = {}) {
         break;
       }
     } catch (err) {
-      if (err instanceof HTTPError && err.status === 408) {
-        continue;
+      if (++failures < maxAttempts) {
+        if (err instanceof HTTPError && [ 408, 429, 502, 504 ].includes(err.status)) {
+          continue;
+        }  
       }
       throw err;
     }
@@ -98,20 +102,11 @@ export async function* generateStreamChunks(stream) {
   }
 }
 
-export async function createHTTPError(res) {
-  const error = new HTTPError(`HTTP ${res.status} - ${res.statusText}`);
-  error.status = res.status;
-  error.statusText = res.statusText;
-  try {
-    const json = await res.json();
-    for await (const [ key, value ] of json) {
-      error[key] = value;
-    }
-  } catch (err) {
-  }
-  return error;
-}
-
 class HTTPError extends Error { 
+  constructor(res) {
+    super(`HTTP ${res.status} - ${res.statusText}`);
+    this.status = res.status;
+    this.statusText = res.statusText;
+  }
 }
 
