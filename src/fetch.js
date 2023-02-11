@@ -52,7 +52,7 @@ export async function* fetchChunks(url, options) {
         throw new Error(`Resource does not have an etag ${url}`);
       }
       const range = res.headers.get('content-range');
-      const m = /bytes\s+(\d+)\-(\d+)\/(\d+)/i.exec(range);
+      const m = /bytes\s+(\d+)-(\d+)\/(\d+)/i.exec(range);
       if (!m) {
         throw new Error(`Invald range header: ${range}`);
       }
