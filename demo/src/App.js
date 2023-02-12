@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { generateJSON } from './json.js';
+import { generateJSON } from 'progressive-json';
 import * as example from './example.js';
 import './css/App.css';
 
