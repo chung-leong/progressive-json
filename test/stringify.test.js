@@ -1,0 +1,242 @@
+import { expect } from 'chai';
+import { createServer } from 'http';
+
+import {
+  createJSONStream,
+} from '../server.js';
+import {
+  generateStringified,
+} from '../src/stringify.js';
+import {
+  fetchJSON,
+} from '../index.js';
+
+describe('Stringification', function() {
+  describe('#generateStringified', function() {
+    it('should yield the same result as JSON.stringify when a regular object is given', async function() {
+      const object = {
+        a: 'Hello world',
+        b: NaN,
+        c: Infinity,
+        d: Symbol('?'),
+        e: {
+          f: [ 1, 2, 3, undefined ],
+          g: new Date(),
+        },
+        h: () => {},
+        i: function() {},
+        "\n\n": "\n\n",
+      };
+      const text1 = await readText(generateStringified(object));
+      const text2 = JSON.stringify(object);
+      expect(text1).to.equal(text2);
+    })
+    it('should indent the same way as JSON.stringify', async function() {
+      const object = {
+        a: 'Hello world',
+        b: NaN,
+        c: Infinity,
+        d: Symbol('?'),
+        e: {
+          f: [ 1, 2, 3, undefined ],
+          g: new Date(),
+        },
+        h: () => {},
+        i: function() {},
+        "\n\n": "\n\n",
+      };
+      const text1 = await readText(generateStringified(object, undefined, 2));
+      const text2 = JSON.stringify(object, undefined, 2);
+      expect(text1).to.equal(text2);
+    })
+    it('should handle promises as expected', async function() {
+      const object2 = {
+        a: 'Hello world',
+        b: NaN,
+        c: Infinity,
+        d: Symbol('?'),
+        e: {
+          f: [ 1, 2, 3, undefined ],
+          g: new Date(),
+        },
+        h: () => {},
+        i: function() {},
+        "\n\n": "\n\n",
+      };
+      const object1 = {
+        ...object2,
+        a: Promise.resolve(object2.a),
+        b: Promise.resolve(object2.b),
+      };
+      const text1 = await readText(generateStringified(object1, undefined, 2));
+      const text2 = JSON.stringify(object2, undefined, 2);
+      expect(text1).to.equal(text2);
+    })
+    it('should accept async generator', async function() {
+      async function *generate() {
+        yield 1;
+        await delay(10);
+        yield 2;
+        await delay(10);
+        yield {
+          a: [ 1, 2, {}, [] ],
+          b: delay(10).then(() => "Hello world")
+        };
+        yield (async function*() {
+          // yield nothing
+          delay(10);
+        })();
+      };
+      const text = await readText(generateStringified(generate(), undefined, 2));
+      const object = JSON.parse(text);
+      expect(object).to.eql([ 1, 2, { a: [ 1, 2, {}, [] ], b: 'Hello world' }, [] ]);
+    })
+    it('should use replacer function', async function() {
+      const object = {
+        a: 'Hello world',
+        b: NaN,
+        c: Infinity,
+        d: Symbol('?'),
+        e: {
+          f: [ 1, 2, 3, undefined ],
+          g: new Date(),
+        },
+        h: () => {},
+        i: function() {},
+        "\n\n": "\n\n",
+      };
+      const replacer = (key, val) => key ? 'dingo' : val;
+      const text1 = await readText(generateStringified(object, replacer));
+      const text2 = JSON.stringify(object, replacer);
+      expect(text1).to.equal(text2);
+    })
+    it('should use replacer array', async function() {
+      const object = {
+        a: 'Hello world',
+        b: NaN,
+        c: Infinity,
+        d: Symbol('?'),
+        e: {
+          f: [ 1, 2, 3, undefined ],
+          g: new Date(),
+        },
+        h: () => {},
+        i: function() {},
+        "\n\n": "\n\n",
+      };
+      const replacer = [ 'a', 'c', 'd', 'e', 'f' ];
+      const text1 = await readText(generateStringified(object, replacer, 2));
+      const text2 = JSON.stringify(object, replacer, 2);
+      expect(text1).to.equal(text2);
+    })
+    it('should treat invalid replacer and space the same way as JSON.stringify', async function() {
+      const object = {
+        a: 'Hello world',
+        b: NaN,
+        c: Infinity,
+        d: Symbol('?'),
+        e: {
+          f: [ 1, 2, 3, undefined ],
+          g: new Date(),
+        },
+        h: () => {},
+        i: function() {},
+        "\n\n": "\n\n",
+      };
+      const replacer = 'a';
+      const text1 = await readText(generateStringified(object, replacer, Infinity));
+      const text2 = JSON.stringify(object, replacer, Infinity);
+      expect(text1).to.equal(text2);
+      const text3 = await readText(generateStringified(object, replacer, -34));
+      const text4 = JSON.stringify(object, replacer, -34);
+      expect(text3).to.equal(text4);
+      const text5 = await readText(generateStringified(object, replacer, ''));
+      const text6 = JSON.stringify(object, replacer, '');
+      expect(text5).to.equal(text6);
+    })
+  })
+  describe('#createJSONStream', function() {
+    const server = createServer((req, res) => server.handler(req, res));
+    before(function(done) {
+      server.listen(0, done);
+    });
+    after(function(done) {
+      server.close(done);
+    });
+    afterEach(function() {
+      server.handler = null;
+    });
+    it('should create a stream that produces a JSON document', async function() {
+      server.handler = (req, res) => {
+        const object = {
+          a: 'Hello world',
+          b: delay(10).then(() => 123),
+          c: (async function*() {
+            yield 'bingo';
+            yield 'dingo';
+            yield 'jingo';
+            await delay(30);
+            yield 'lingo';
+          })(),
+        };
+        const stream = createJSONStream(object, undefined, 2);
+        res.writeHead(200, { 'Content-type': 'application/json' });
+        stream.pipe(res);
+      };
+      const { port } = server.address();
+      const url = `http://localhost:${port}/`;
+      const res = await fetch(url);
+      const json = await res.json();
+      expect(json).to.eql({
+        a: 'Hello world',
+        b: 123,
+        c: [ 'bingo', 'dingo', 'jingo', 'lingo' ]
+      });
+    })
+    it('should produce useful result for fetchJSON', async function() {
+      server.handler = (req, res) => {
+        const object = (async function*() {
+          for (let i = 1; i <= 10; i++) {
+            yield {
+              id: i,
+              date: new Date(),
+              hello: 'Hello world!\n'.repeat(10),
+            };
+            await delay(10);  
+          }
+        })();
+        const stream = createJSONStream(object, (key, val) => val, 2);
+        res.writeHead(200, { 'Content-type': 'application/json' });
+        stream.pipe(res);
+      };
+      const { port } = server.address();
+      const url = `http://localhost:${port}/`;
+      const objects = [];
+      for await (const object of fetchJSON(url)) {
+        objects.push(object);
+      }
+      expect(objects.length).to.be.at.least(2);
+    })
+  })
+})
+
+async function readText(generator) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of generator) {
+    chunks.push(chunk);
+    size += chunk.length;
+  }
+  const buffer = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset);
+    offset += chunk.length;
+  }
+  const decoder = new TextDecoder();
+  return decoder.decode(buffer);
+}
+
+function delay(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}

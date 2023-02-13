@@ -20,11 +20,13 @@
     "partial"
   ],
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./server": "./server.js"
   },
   "files": [
     "src/",
-    "index.js"
+    "index.js",
+    "server.js"
   ],
   "author": "Chung Leong",
   "license": "MIT",
