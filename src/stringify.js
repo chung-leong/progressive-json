@@ -10,8 +10,11 @@ export async function* generateStringified(value, replacer, space = 0) {
   const queue = new Queue;
   let depth = 0, indent = '';
 
-  if (!isFinite(space)) {
-    space = 0;
+  if (!(space >= 0 && space <= 8)) {
+    // see how JSON.stringify() deal with space outside the sane range
+    const text = JSON.stringify([ 1 ], undefined, space);
+    const m = /\[\n( +)1\s*\]/.exec(text);
+    space = (m) ? m[1].length : 0;
   }
   if (replacer) {
     if (Array.isArray(replacer)) {
