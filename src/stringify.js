@@ -1,3 +1,4 @@
+import { count } from 'console';
 import { sep } from 'path';
 import { Readable } from 'stream';
 
@@ -112,7 +113,7 @@ export async function* generateStringified(value, replacer, space = 0) {
     }
   }
 
-  process(value).then(() => queue.close());
+  process(value).then(() => queue.close(), err => queue.throw(err));
 
   const encoder = new TextEncoder();
   for (;;) {
@@ -130,6 +131,7 @@ class Queue {
     this.items = [];
     this.promise = null;
     this.resolve = null;
+    this.reject = null;
     this.closed = false;
   }
 
@@ -137,11 +139,22 @@ class Queue {
     this.closed = true;
     this.signal();
   }
+
+  throw(err) {
+    if (this.reject) {
+      this.reject(err);
+    } else {
+      this.promise = Promise.reject(err);
+    }
+  }
   
   async pull() {
     if (!this.items && !this.closed) {
       if (!this.promise) {
-        this.promise = new Promise(r => this.resolve = r);
+        this.promise = new Promise((resolve, reject) => {
+          this.resolve = resolve;
+          this.reject = reject;
+        });
       }
       await this.promise;
     }
@@ -166,4 +179,43 @@ class Queue {
       this.resolve = null;
     }
   }
+}
+
+export function countGenerated(generator) {
+  let count = 0, active = true;
+
+  function remember({ done }) {
+    if (!done) {
+      count++;
+    } else {
+      active = false;
+    }
+  }
+
+  function toJSON() {
+    if (active) {
+      throw new Error('Generator is still active');
+    }
+    return count;
+  }
+
+  // attach hook
+  const { next } = generator;
+  if (typeof(next) !== 'function') {
+    throw new TypeError('Not a generator');
+  }
+  generator.next = () => {
+    const res = next.call(generator);
+    if (typeof(res.then) === 'function') {
+      res.then(remember, () => {});
+    } else {
+      remember(res);
+    }
+    return res;
+  };
+  return { toJSON };
+}
+
+export function deferred(cb) {
+  return { toJSON: cb };
 }
