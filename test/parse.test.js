@@ -175,7 +175,28 @@ describe('JSON parsing', function() {
       // to the whole document, not relative to the key
       expect(error).to.be.an('error').with.property('message').that.contains('position 3');
     }) 
-  })
+    it('should produce the correct position where an error occurs', async function() {
+      const args = [
+        '                       [, "\u2000\u2014", "Hell',
+        'o" ]',
+      ];
+      const source = createDataSource(...args);
+      let error1;
+      try {
+        for await (const object of generateJSON(source)) {        
+        }
+      } catch (err) {
+        error1 = err;
+      }
+      let error2;
+      try {
+        JSON.parse(args.join(''));
+      } catch (err) {
+        error2 = err;
+      }
+      expect(error1.message).to.equal(error2.message);
+    })
+  })  
 })
 
 function createDataSource(...args) {

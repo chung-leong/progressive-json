@@ -30,3 +30,24 @@ export function merge(base, fragment, depth) {
     }
   }
 }
+
+export function empty(base, depth)  {
+  const isArray = Array.isArray(base);
+  if (depth > 1) {
+    let key;
+    if (isArray) {
+      key = base.length - 1;
+    } else {
+      const keys = Object.keys(base);
+      key = keys[keys.length - 1];
+    }
+    return empty(base[key], depth - 1);
+  } else {
+    if (isArray) {
+      return (base.length === 0);
+    } else {
+      const keys = Object.keys(base);
+      return (keys.length === 0);
+    }
+  }
+}

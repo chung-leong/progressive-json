@@ -1,4 +1,4 @@
-import { merge } from './merge.js';
+import { empty, merge } from './merge.js';
 
 const DOUBLE_QUOTE = 0x22;
 const BACK_SLASH = 0x5C;
@@ -34,8 +34,8 @@ export async function *generateJSON(source, options = {}) {
   let keyStart = 0, keyEnd = 0;
   let openBracket = 0, closeBracket = 0, stack = [];
   let inString = false, escaped = false, syntaxError = false;
-  let openingSequence = [], prevResult = undefined, charIndex = 0;
-  let leftover = new Uint8Array(0); 
+  let openingSequence = [], prevResult, hasSibling = false;
+  let leftover = new Uint8Array(0), charIndex = 0; 
   for await (let buffer of source) {
     let index = 0;
     if (leftover) {
@@ -127,8 +127,8 @@ export async function *generateJSON(source, options = {}) {
         const strBuffer = buffer.subarray(0, safeEndIndex);
         const str = decoder.decode(strBuffer);
         charIndex += str.length;
-        // remove any leading comma
-        const fragment = str.replace(/^\s*,\s*/, '');
+        // remove any leading comma if there's a preceding sibling
+        const fragment = (hasSibling) ? str.replace(/^\s*,\s*/, '') : str;
         const start = openingSequence.join('');
         const end = closingSequence.join('');
         let result = JSON.parse(start + fragment + end);
@@ -136,6 +136,9 @@ export async function *generateJSON(source, options = {}) {
           // merge result into previous result
           result = merge(prevResult, result, openingSequence.length);
         }
+        // check if the end object isn't empty, which would be only happen when 
+        // the JSON is syntactically incorrect (e.g. "{, 5")
+        hasSibling = !empty(result);
         if (yieldClosingBrackets) {
           yield [ result, end ];
         } else {
@@ -169,19 +172,19 @@ export async function *generateJSON(source, options = {}) {
     }
   }
   // text remaining at the end
-  const text = decoder.decode(leftover);
-  console.log({ text, prevResult, openingSequence })
+  const str = decoder.decode(leftover);
+  //console.log({ text, prevResult, openingSequence })
   if (prevResult === undefined) {
     // no object was found--probably a scalar
-    yield JSON.parse(text);
-  } else if (text.trim() || openingSequence.length > 0) {
+    yield JSON.parse(str);
+  } else if (str.trim() || openingSequence.length > 0) {
     // not just whitespaces remaining or closing brackets are missing
     // an error was encountered
-    const str = text.replace(/^\s*,\s*/, '');
+    const fragment = (hasSibling) ? str.replace(/^\s*,\s*/, '') : str;
     // if there's no opening sequence, a proper object was parsed but garbage follows
     const start = (openingSequence.length > 0) ? openingSequence.join('') : '{}';
     // pad the text with spaces at the beginning to make position line up with original
     const space = ' '.repeat(charIndex - start.length);
-    JSON.parse(space + start + str);  
+    JSON.parse(space + start + fragment);  
   }
 }
