@@ -138,7 +138,7 @@ export async function *generateJSON(source, options = {}) {
         }
         // check if the end object isn't empty, which would be only happen when 
         // the JSON is syntactically incorrect (e.g. "{, 5")
-        hasSibling = !empty(result);
+        hasSibling = !empty(result, openingSequence.length);
         if (yieldClosingBrackets) {
           yield [ result, end ];
         } else {
