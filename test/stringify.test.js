@@ -197,7 +197,7 @@ describe('Stringification', function() {
     })
     it('should produce useful result for fetchJSON', async function() {
       server.handler = (req, res) => {
-        const object = (async function*() {
+        const results = (async function*() {
           for (let i = 1; i <= 10; i++) {
             yield {
               id: i,
@@ -207,7 +207,7 @@ describe('Stringification', function() {
             await delay(10);  
           }
         })();
-        const stream = createJSONStream(object, (key, val) => val, 2);
+        const stream = createJSONStream(results, (key, val) => val, 2);
         res.writeHead(200, { 'Content-type': 'application/json' });
         stream.pipe(res);
       };
