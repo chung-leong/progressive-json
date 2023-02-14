@@ -27,8 +27,8 @@ positioned ahead of the generator:
 ```js
   const results = loadRecords();
   const output = {
-    count: countGenerated(results),
-    results,
+    count: countGenerated(results), // promise never filfills
+    results,                        // generate is not reachable
   };
   createJSONStream().pipe(res);
 ```

@@ -1,0 +1,4 @@
+# generateJSON(source, options = {})
+
+## Syntax
+

@@ -1,20 +1,20 @@
 # deferred(cb)
 
-Insert a value whose calculation is performed later, when it is actually needed  
+Insert a value that is computed later, at the moment when it is needed  
 
 ```js
   const output = {
     results: loadRecords(),
     meta: deferred(async () => {
-      /* generate */
+      /* generate metadata */
     })
   };
 ```
 
 ## Parameters
 
-`cb` - `<AsyncFunction>`
+`cb` - `<AsyncFunction>` Callback that produces the eventual value
 
 ## Notes
 
-`deferred` just sticks the callback into an object as its `onJSON` handler.
+`deferred` simply return an object with the callback as its `onJSON` handler.

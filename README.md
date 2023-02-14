@@ -14,9 +14,11 @@ making it practical to host data-driven app on static website providers like
 
 ## Feature set
 
-* [Async generator functions for retrieving snapshots of JSON objects](./doc/fetching-and-parsing.md)
-* [React hooks for make use of progressively loaded JSON](./doc/using-hooks.md)
-* [Server-side functions for efficient streaming of large JSON objects](./doc/server-side-streaming.md)
+* An async generator function for retrieving snapshots of JSON objects: [fetchJSON](./doc/fetchJSON.md)
+* React hooks for make use of progressively loaded JSON: [useProgressiveJSON](./doc/useProgressiveJSON.md) and [usePartialJSON](./doc/usePartialJSON.md)
+* A server-side function for streaming of large JSON objects: [createJSONStream](./doc/createJSONStream.md)
+
+## Demo
 
 ## How it works
 
@@ -30,3 +32,22 @@ Supposed we want to stop parsing after the first item in `results`. We want to c
 
 Actual JSON parsing is done by 
 [`JSON.parse()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse). 
+
+## API reference
+
+#### Client-side:
+
+* [fetchJSON](./doc/fetchJSON.md)
+* [generateJSON](./doc/generateJSON.md)
+* [useArraySlice](./doc/useArraySlice.md)
+* [usePartialJSON](./doc/usePartialJSON.md)
+* [useProgressiveJSON](./doc/useProgressiveJSON.md)
+
+#### Server-side:
+
+Server-side functions are found in `"progressive-json/server"'.
+
+* [createJSONStream](./doc/createJSONStream.md)
+* [countGenerated](./doc/countGenerated.md)
+* [deferred](./doc/deferred.md)
+
