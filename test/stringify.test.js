@@ -156,6 +156,23 @@ describe('Stringification', function() {
       const text6 = JSON.stringify(object, replacer, '');
       expect(text5).to.equal(text6);
     })
+    it('should error out when a toJSON handler throws', async function() {
+      const object = {
+        bad: { 
+          toJSON: () => {
+            throw new Error('Bad news')
+          }
+        }
+      };
+      let error;
+      try {
+        for await (const json of generateStringified(object)) {          
+        }
+      } catch (err) {
+        error = err;
+      }
+      expect(error).to.be.an('error');
+    })
   })
   describe('#createJSONStream', function() {
     const server = createServer((req, res) => server.handler(req, res));
@@ -255,45 +272,54 @@ describe('Stringification', function() {
         count: 3
       });
     })
-    it('should throw when attempt to stringify count before generator is exhausted', async function() {
-      const generator = (async function*() {
-        yield 1;
-        yield 2;
-        yield 3;
-      })();
-      const object = {
-        count: countGenerated(generator),
-        results: generator,
-      };
-      let error;
-      try {
-        const text = await readText(generateStringified(object));        
-      } catch (err) {
-        error = err;
-      }
-      expect(error).to.be.an('error');
-    })
-    it('should throw when error occurs some time later', async function() {
-      const generator = (async function*() {
-        yield 1;
-        yield 2;
-        yield 3;
-      })();
-      const object = {
-        date: delay(10).then(() => new Date()),
-        count: countGenerated(generator),
-        results: generator,
-      };
-      let error;
-      try {
-        const text = await readText(generateStringified(object));        
-      } catch (err) {
-        error = err;
-      }
-      expect(error).to.be.an('error');
-    })
     it('should throw when given non-generator', async function() {
       expect(() => countGenerated({})).to.throw();
+    })
+    it('should reject when an error occurs in the generator', async function() {
+      // cover error handling in generateStringified too
+      const generator = (function*() {
+        yield 1;
+        yield 2;
+        yield 3;
+        throw new Error('A five-ounce bird cannot carry a one-pound coconut');
+      })();
+      const object = { count: countGenerated(generator) };
+      try {
+        // fulfill the promise
+        for (const number of generator) {
+        }
+      } catch (err) {
+      }
+      let error;
+      try {
+        const text = await readText(generateStringified(object));        
+      } catch (err) {
+        error = err;
+      }
+      expect(error).to.be.an('error');
+    })
+    it('should reject when an error occurs in the async generator', async function() {
+      // cover error handling in generateStringified too
+      const generator = (async function*() {
+        yield 1;
+        yield 2;
+        yield 3;
+        throw new Error('A five-ounce bird cannot carry a one-pound coconut');
+      })();
+      const object = { count: countGenerated(generator) };
+      try {
+        // fulfill the promise
+        for await (const number of generator) {
+        }
+      } catch (err) {
+      }
+      let error;
+      try {
+        const text = await readText(generateStringified(object));        
+      } catch (err) {
+        error = err;
+      }
+      expect(error).to.be.an('error');
     })
   })
   describe('#deferred', function() {
