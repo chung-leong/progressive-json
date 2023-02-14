@@ -1,6 +1,6 @@
 {
   "name": "progressive-json",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Retrieve JSON progressively",
   "main": "index.js",
   "type": "module",

@@ -40,12 +40,12 @@ export function usePartialJSON(url, options = {}) {
   return [ object, ref.current.more ];
 }
 
-export function useArraySlice(array, start, length, more) {
-  const slice = useMemo(() => array?.slice(start, length), [ array, start, length ]);
+export function useArraySlice(array, start, end, more) {
+  const slice = useMemo(() => array?.slice(start, end), [ array, start, end ]);
   useEffect(() => {
-    if (array?.length < start + length) {
+    if (array?.length < end) {
       more?.();
     }
-  }, [ array, start, length, more ]);
+  }, [ array, start, end, more ]);
   return slice;
 }
