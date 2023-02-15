@@ -185,38 +185,34 @@ class Queue {
 }
 
 export function countGenerated(generator) {
-  let count = 0, active = true;
-
-  function remember({ done }) {
-    if (!done) {
-      count++;
-    } else {
-      active = false;
-    }
-  }
-
-  function toJSON() {
-    if (active) {
-      throw new Error('Generator is still active');
-    }
-    return count;
-  }
-
-  // attach hook
   const { next } = generator;
   if (typeof(next) !== 'function') {
     throw new TypeError('Not a generator');
   }
-  generator.next = () => {
-    const res = next.call(generator);
-    if (typeof(res.then) === 'function') {
-      res.then(remember, () => {});
-    } else {
-      remember(res);
-    }
-    return res;
-  };
-  return { toJSON };
+  return new Promise((resolve, reject) => { 
+    let count = 0;
+    const remember = ({ done }) => {
+      if (!done) {
+        count++;
+      } else {
+        resolve(count);
+      }
+    };
+    // attach hook
+    generator.next = () => {
+      try {
+        const res = next.call(generator);
+        if (typeof(res.then) === 'function') {
+          res.then(remember, reject);
+        } else {
+          remember(res);
+        }
+        return res;
+      } catch (err) {
+        reject(err);
+      }
+    };
+  });
 }
 
 export function deferred(cb) {

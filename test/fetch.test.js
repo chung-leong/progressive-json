@@ -245,7 +245,7 @@ describe('Data retrieval', function() {
         const etag = `switched-${switched}`;
         const match = req.headers['if-match'];
         if (match && match !== etag) {
-          res.writeHead(406);
+          res.writeHead(412);
           res.end('');
         } else {
           const data = JSON.stringify(switched ? originalB : originalA);
