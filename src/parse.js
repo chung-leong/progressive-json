@@ -173,7 +173,6 @@ export async function *generateJSON(source, options = {}) {
   }
   // text remaining at the end
   const str = decoder.decode(leftover);
-  //console.log({ text, prevResult, openingSequence })
   if (prevResult === undefined) {
     // no object was found--probably a scalar
     yield JSON.parse(str);

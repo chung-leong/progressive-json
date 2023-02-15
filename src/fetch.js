@@ -45,7 +45,7 @@ export async function* fetchChunks(url, options = {}) {
     pause,
     ...fetchOptions
   } = options;
-  let offset = 0, etag = '', size = -1, failures = 0;
+  let offset = 0, etag = '', lastModified = '', size = -1, failures = 0;
   for (;;) {
     try {
       if (failures > 0) {
@@ -55,6 +55,8 @@ export async function* fetchChunks(url, options = {}) {
         const headers = fetchOptions.headers = { ...fetchOptions.headers };
         if (etag) {
           headers['if-match'] = etag;
+        } else if (lastModified) {
+          headers['if-unmodified-since'] = lastModified;
         }
         headers['range'] = `bytes=${offset}-${offset + chunkSize - 1}`;
         const res = await fetch(url, fetchOptions);
@@ -62,9 +64,7 @@ export async function* fetchChunks(url, options = {}) {
           throw new HTTPError(res);
         }
         etag = res.headers.get('etag');
-        if (!etag) {
-          throw new Error(`Resource does not have an etag ${url}`);
-        }
+        lastModified = res.headers.get('last-modified');
         const range = res.headers.get('content-range');
         const m = /bytes\s+(\d+)-(\d+)\/(\d+)/i.exec(range);
         if (!m) {

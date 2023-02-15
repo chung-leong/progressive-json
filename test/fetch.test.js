@@ -274,6 +274,55 @@ describe('Data retrieval', function() {
       expect(objects[0]).to.eql({ results: [ { a: 1, b: 2, c: 3 } ] });
       expect(objects[3]).to.eql({ results: [ { hello: 'world' } ] });
     })
+    it('should restart from beginning when last modified date changes half way', async function() {
+      const originalA = {
+        results: [
+          { a: 1, b: 2, c: 3 },
+          { a: 4, b: 5, c: 6 },
+          { a: 7, b: 8, c: 9 },
+          { a: 10, b: 11, c: 12 },
+          { a: 13, b: 14, c: 15 },
+        ],
+      };
+      const originalB = {
+        results: [
+          { hello: 'world' },
+        ],
+      };
+      let switched = false, lastModified = new Date('2000-01-01').toString();
+      server.handler = (req, res) => {
+        const match = req.headers['if-unmodified-since'];
+        if (match && match !== lastModified) {
+          res.writeHead(412);
+          res.end('');
+        } else {
+          const data = JSON.stringify(switched ? originalB : originalA);
+          const range = req.headers.range;
+          const m = /bytes=(\d+)-(\d+)/.exec(range);
+          const si = parseInt(m[1]), ei = parseInt(m[2]);
+          res.writeHead(206, { 
+            'Content-Type': 'text/plain',
+            'Last-Modified': lastModified,
+            'Content-Range': `bytes ${si}-${ei}/${data.length}`,
+          });
+          res.end(data.substring(si, ei + 1));  
+        }
+      };
+      const { port } = server.address();
+      const url = `http://localhost:${port}/resource`;
+      const objects = [];
+      const pause = async () => {
+        if (objects.length === 3) {
+          switched = true;
+          lastModified = new Date('2011-01-01').toString();
+        }
+      };
+      for await (const object of fetchJSON(url, { partial: 'results', chunkSize: 3, pause })) {
+        objects.push(object);
+      }
+      expect(objects[0]).to.eql({ results: [ { a: 1, b: 2, c: 3 } ] });
+      expect(objects[3]).to.eql({ results: [ { hello: 'world' } ] });
+    })
     it('should throw when server does not handle range', async function() {
       const original = {
         results: [
