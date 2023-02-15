@@ -1,0 +1,12 @@
+.App {
+  display: flex;
+}
+
+.App .top-bar {
+  flex: 0 0 auto;
+}
+
+.App .content-area {
+  flex: 1 1 auto;
+}
+
