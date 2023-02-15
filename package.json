@@ -1,5 +1,6 @@
 {
   "name": "progressive-json",
+  "homepage": "https://chung-leong.github.io/progressive-json",
   "version": "0.0.2",
   "description": "Retrieve JSON progressively",
   "main": "index.js",

@@ -20,7 +20,9 @@ function Widget({ url }) {
 ## Options
 
 * `delay` - `<number>` Time interval in millisecond between component updates (Default: `100`)
+* `maxRetries` - `<number>` Maximum number of retries after encountering an error that is 
 * `partial` - `<string>` or `<string[]>` The path to the sub-object that can be partially retrieved (Default: `""`)
+* `retryInterval` - `<number>` Number of milliseconds to wait between retries (Default: `30000`)
 
 ## Notes
 

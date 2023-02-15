@@ -27,7 +27,7 @@ export async function* fetchJSON(url, options = {}) {
       break;
     } catch (err) {
       if (++restarts < 10) {
-        if (err instanceof HTTPError && err.status === 406) {
+        if (err instanceof HTTPError && err.status === 412) {
           // file changed while we're retrieving it--start over
           continue;
         }  
@@ -40,7 +40,7 @@ export async function* fetchJSON(url, options = {}) {
 export async function* fetchChunks(url, options = {}) {
   const {
     chunkSize = 0,
-    maxAttempts = Infinity,
+    maxRetries = Infinity,
     retryInterval = 1000 * 30,
     pause,
     ...fetchOptions
@@ -93,7 +93,7 @@ export async function* fetchChunks(url, options = {}) {
         break;
       }
     } catch (err) {
-      if (++failures < maxAttempts) {
+      if (++failures < maxRetries) {
         if (err instanceof HTTPError && [ 408, 429, 502, 504 ].includes(err.status)) {
           continue;
         }  

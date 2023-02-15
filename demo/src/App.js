@@ -6,7 +6,7 @@ import './css/App.css';
 export default function App() {
   const [ input, setInput ] = useState(() => JSON.stringify(example.object, undefined, 2));
   const [ output, setOutput ] = useState();
-  const [ url, setURL ] = useState('posts.json');
+  const [ url, setURL ] = useState('');
   const [ sourceURL, setSourceURL ] = useState('');
   const [ sourceError, setSourceError ] = useState();
   const [ partialList, setPartialList ] = useState(example.partial);
