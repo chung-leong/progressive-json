@@ -1,12 +1,40 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+}
+
 .App {
   display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-height: 100vh;
 }
 
 .App .top-bar {
   flex: 0 0 auto;
+  min-height: 0;
+  background-color: #ccc;
+}
+
+.App .top-bar button {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin: 0.5em;
 }
 
 .App .content-area {
   flex: 1 1 auto;
+  min-height: 0;  
+  overflow-y: scroll;
 }
 
+.PaginatedList .navigation {
+  float: right;
+}
+
+.PaginatedList .navigation button {
+  margin: 0.5em;
+}

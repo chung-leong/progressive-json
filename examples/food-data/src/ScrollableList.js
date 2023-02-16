@@ -1,10 +1,31 @@
+import { useEffect, useRef } from 'react';
 import { usePartialJSON } from 'progressive-json';
+import FoodDescription from './FoodDescription.js';
 
-export default function ScrollableList({ url }) {
-  const list = usePartialJSON(url);
+export default function ScrollableList({ url, field }) {
+  const partial = `${field}.#.foodNutrients`;
+  const [ json, more ] = usePartialJSON(url, { partial });
+  const list = json[field] ?? [];
+
+  // detect bottom
+  const bottom = useRef();
+  useEffect(() => {
+    const observer = new IntersectionObserver(more, {
+      root: bottom.current.parentNode.parentNode,
+      rootMargin: '0px 0px 100% 0px',
+      threshold: 0
+    });
+    observer.observe(bottom.current);
+    return () => {
+      observer.disconnect();
+    };
+  }, [ more ]);
   return (
-    <pre>
-      {JSON.stringify(list, undefined, 2)}
-    </pre>
+    <ul className="ScrollableList">
+      {list.map((item, index) => {
+        return <FoodDescription key={index} info={item} />;
+      })}
+      <div ref={bottom} className="bottom"></div>
+    </ul>
   );
 }

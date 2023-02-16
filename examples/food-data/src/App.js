@@ -5,7 +5,8 @@ import './css/App.css';
 
 export default function App() {
   const [ List, setListType ] = useState(() => ScrollableList);  
-  const url = './FoodData_Central_foundation_food_json_2022-10-28.json';
+  const url = './FoodData_Central_survey_food_json_2022-10-28.json';
+  const field = 'SurveyFoods';
   return (
     <div className="App">
       <div className="top-bar">
@@ -13,7 +14,7 @@ export default function App() {
         <button onClick={() => setListType(() => PaginatedList)}>Pagination</button>
       </div>
       <div className="content-area">
-        <List url={url} />
+        <List {...{ url, field }} />
       </div>
     </div>
   );
