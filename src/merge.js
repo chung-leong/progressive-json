@@ -42,12 +42,14 @@ export function empty(base, depth)  {
       key = keys[keys.length - 1];
     }
     return empty(base[key], depth - 1);
-  } else {
+  } else if (depth === 1) {
     if (isArray) {
       return (base.length === 0);
     } else {
       const keys = Object.keys(base);
       return (keys.length === 0);
     }
+  } else {
+    return false;
   }
 }

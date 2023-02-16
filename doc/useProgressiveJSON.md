@@ -26,6 +26,8 @@ function Widget({ url }) {
 
 ## Notes
 
+`useProgressiveJSON` returns an empty array initially.
+
 `useProgressiveJSON` will throw if the fetch operation encounters an error. Catch the error using 
 a React error boundary.
 

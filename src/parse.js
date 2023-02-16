@@ -11,7 +11,6 @@ const COMMA = 0x2C;
 export async function *generateJSON(source, options = {}) {
   const {
     partial = [],
-    yieldClosingBrackets = false,
   } = options;
   const decoder = new TextDecoder();
   let allowPartial = { root: null };
@@ -35,9 +34,12 @@ export async function *generateJSON(source, options = {}) {
   let openBracket = 0, closeBracket = 0, stack = [];
   let inString = false, escaped = false, syntaxError = false;
   let openingSequence = [], prevResult, hasSibling = false;
-  let leftover = new Uint8Array(0), charIndex = 0; 
+  let leftover = new Uint8Array(0), charIndex = 0;
+  let loaded = 0, total = 0;  
   for await (let buffer of source) {
     let index = 0;
+    loaded += buffer.length;
+    total = buffer.total;
     if (leftover) {
       const combined = new Uint8Array(leftover.length + buffer.length);
       combined.set(leftover);
@@ -123,14 +125,14 @@ export async function *generateJSON(source, options = {}) {
     } 
     let processed = false;
     if (safeEndIndex > 0 && !syntaxError) {
+      const strBuffer = buffer.subarray(0, safeEndIndex);
+      const str = decoder.decode(strBuffer);
+      charIndex += str.length;
+      // remove any leading comma if there's a preceding sibling
+      const fragment = (hasSibling) ? str.replace(/^\s*,\s*/, '') : str;
+      const start = openingSequence.join('');
+      const end = closingSequence.join('');
       try {
-        const strBuffer = buffer.subarray(0, safeEndIndex);
-        const str = decoder.decode(strBuffer);
-        charIndex += str.length;
-        // remove any leading comma if there's a preceding sibling
-        const fragment = (hasSibling) ? str.replace(/^\s*,\s*/, '') : str;
-        const start = openingSequence.join('');
-        const end = closingSequence.join('');
         let result = JSON.parse(start + fragment + end);
         if (prevResult) {
           // merge result into previous result
@@ -138,12 +140,9 @@ export async function *generateJSON(source, options = {}) {
         }
         // check if the end object isn't empty, which would be only happen when 
         // the JSON is syntactically incorrect (e.g. "{, 5")
-        hasSibling = !empty(result, openingSequence.length);
-        if (yieldClosingBrackets) {
-          yield [ result, end ];
-        } else {
-          yield result;
-        }
+        setJSONProgress(result, { loaded, total, end });
+        yield result;
+        hasSibling = !empty(result, closingSequence.length);
         prevResult = result;
         // construct opening sequence for the next chunk
         openingSequence = [];
@@ -186,4 +185,23 @@ export async function *generateJSON(source, options = {}) {
     const space = ' '.repeat(charIndex - start.length);
     JSON.parse(space + start + fragment);  
   }
+}
+
+let progressCache;
+
+function setJSONProgress(json, progress) {
+  if (!progressCache) {
+    progressCache = new WeakMap();
+  }
+  progressCache.set(json, progress);
+}
+
+export function getJSONProgress(json) {
+  if (json && typeof(json) === 'object') {
+    const progress = progressCache?.get(json);
+    if (progress) {
+      return progress;
+    }
+  }
+  return {};
 }

@@ -2,6 +2,7 @@ import { expect } from 'chai';
 
 import {
   generateJSON,
+  getJSONProgress,
 } from '../index.js';
 
 describe('JSON parsing', function() {
@@ -104,31 +105,7 @@ describe('JSON parsing', function() {
         ],
         what: 'the heck?'
       });
-    })
-  
-    it('should return the end brackets used when yieldClosingBrackets is true', async function() {
-      const source = createDataSource(`
-        { 
-          "hello": [
-            { "a": 1, "b": 2, "c": [] },
-            { "a": 2, "b": 5, "c": [ 1, 2, 3,`, ` 4 ] },
-            { "a": 8, "b": 9, "c": [ 7 ] }
-          ],
-          "what": "the heck?"
-        }
-      `);
-      const objects = [], ends = [];
-      const generator = generateJSON(source, { 
-        partial: 'hello.#.*', 
-        yieldClosingBrackets: true 
-      });
-      for await (const [ object, end ] of generator) {
-        objects.push(object);
-        ends.push(end);
-      }
-      expect(ends[0]).to.equal(']}]}');
-      expect(ends[1]).to.equal('');
-    })
+    }) 
     it('should throw when JSON has comma in an unexpected place', async function() {
       const source = createDataSource(',');
       let error;
@@ -197,13 +174,49 @@ describe('JSON parsing', function() {
       expect(error1.message).to.equal(error2.message);
     })
   })  
+  describe('#getJSONProgress', async function() {
+    it('should return the retrieval progress, including the end brackets used', async function() {
+      const source = createDataSource(`
+        { 
+          "hello": [
+            { "a": 1, "b": 2, "c": [] },
+            { "a": 2, "b": 5, "c": [ 1, 2, 3,`, ` 4 ] },
+            { "a": 8, "b": 9, "c": [ 7 ] }
+          ],
+          "what": "the heck?"
+        }
+      `);
+      const percentages = [], ends = [];
+      const generator = generateJSON(source, { partial: 'hello.#.*' });
+      for await (const object of generator) {
+        const { loaded, total, end } = getJSONProgress(object);
+        percentages.push(loaded / total);
+        ends.push(end);
+      }
+      expect(ends[0]).to.equal(']}]}');
+      expect(percentages[0]).to.be.above(0.25);
+      expect(ends[1]).to.equal('');
+      expect(percentages[1]).to.equal(1);
+    })
+    it('should return an empty object when given an object not from generateJSON', async function() {
+      const progress = getJSONProgress({});
+      expect(progress).to.eql({});
+    })
+    it('should return an empty object when a scalar is given', async function() {
+      const progress = getJSONProgress("Hello world");
+      expect(progress).to.eql({});
+    })
+  })
 })
 
 function createDataSource(...args) {
   return (async function*() {
     const encoder = new TextEncoder;
-    for (const arg of args) {
-      yield encoder.encode(arg);
+    const chunks = args.map(arg => encoder.encode(arg));
+    const total = chunks.reduce((total, chunk) => total + chunk.length, 0);
+    for (const chunk of chunks) {
+      chunk.total = total;
+      yield chunk;
     }
   })();
 }

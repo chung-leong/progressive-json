@@ -28,6 +28,8 @@ function Widget({ url }) {
 
 ## Notes
 
+`usePartialJSON` returns an empty array initially.
+
 `usePartialJSON` will throw if the fetch operation encounters an error (if the server does not 
 support range requests, for instance). Catch the error using a React error boundary.
 

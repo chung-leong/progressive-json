@@ -2,7 +2,8 @@ export {
   fetchJSON,
 } from './src/fetch.js';
 export {
-  generateJSON
+  generateJSON,
+  getJSONProgress,
 } from './src/parse.js';
 export {
   useProgressiveJSON,

@@ -7,11 +7,12 @@ export function useProgressiveJSON(url, options) {
   // when the options change for whatever reason
   const ref = useRef({});
   ref.current.options = options;
-  const object = useSequentialState(async function*({ defer, mount, signal }) {
+  const object = useSequentialState(async function*({ initial, defer, mount, signal }) {
     const {
       delay = 100,
       ...fetchOptions
     } = ref.current.options;
+    initial([]);
     defer(delay);
     fetchOptions.signal = signal;
     await mount();
@@ -23,13 +24,14 @@ export function useProgressiveJSON(url, options) {
 export function usePartialJSON(url, options = {}) {
   const ref = useRef({});
   ref.current.options = options;
-  const object = useSequentialState(async function*({ defer, mount, manageEvents, signal }) {
+  const object = useSequentialState(async function*({ initial, defer, mount, manageEvents, signal }) {
     const [ on, eventual ] = manageEvents();
     const {
       delay = 100,
       chunkSize = 50 * 1024,
       ...fetchOptions
     } = ref.current.options;
+    initial([]);
     defer(delay);
     fetchOptions.chunkSize = chunkSize;
     fetchOptions.signal = signal;

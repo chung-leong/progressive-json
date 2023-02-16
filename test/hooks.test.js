@@ -53,12 +53,8 @@ describe('React hooks', function() {
       const objects = [];
       function Test() {
         const object = useProgressiveJSON(url, { chunkSize: 5, delay: 0, partial: 'results' });
-        if (object) {
-          objects.push(object);
-          return `${object.results}`;
-        } else {
-          return null;
-        }
+        objects.push(object);
+        return `${object.results}`;
       }
       const el = createElement(Test);
       const renderer = new create(el);
@@ -67,9 +63,10 @@ describe('React hooks', function() {
         await delay(10);
       }
       await delay(30);
-      expect(objects).to.have.lengthOf(5);
-      expect(objects[0].results).to.have.lengthOf(1);
-      expect(objects[1].results).to.have.lengthOf(2);
+      expect(objects).to.have.lengthOf(6);
+      expect(objects[0]).to.eql([]);
+      expect(objects[1].results).to.have.lengthOf(1);
+      expect(objects[2].results).to.have.lengthOf(2);
     })
   })
   describe('#usePartialJSON', function() {
@@ -202,7 +199,7 @@ describe('React hooks', function() {
       function Test() {
         const [ object, more ] = usePartialJSON(url, { chunkSize: 5, delay: 0, partial: 'results' });
         const array = useArraySlice(object?.results, 0, 5, more);
-        return `${object?.results.map(obj => obj.id)}`;
+        return `${object.results?.map(obj => obj.id)}`;
       }
       const el = createElement(Test);
       const renderer = new create(el);

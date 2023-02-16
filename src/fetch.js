@@ -72,6 +72,7 @@ export async function* fetchChunks(url, options = {}) {
         }
         size = parseInt(m[3]);
         for await (const chunk of generateStreamChunks(res.body)) {
+          chunk.total = size;
           yield chunk;
           offset += chunk.length
         }
@@ -87,7 +88,10 @@ export async function* fetchChunks(url, options = {}) {
         if (res.status !== 200) {
           throw new HTTPError(res);
         }
+        const length = res.headers.get('content-length');
+        size = parseInt(length) || undefined;
         for await (const chunk of generateStreamChunks(res.body)) {
+          chunk.total = size;
           yield chunk;
         }
         break;

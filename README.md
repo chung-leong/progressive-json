@@ -56,6 +56,7 @@ The chunk size is set to a unrealistic small size of 16 for demonstration purpos
 
 * [fetchJSON](./doc/fetchJSON.md)
 * [generateJSON](./doc/generateJSON.md)
+* [getJSONProgress](./doc/getJSONProgress.md)
 * [useArraySlice](./doc/useArraySlice.md)
 * [usePartialJSON](./doc/usePartialJSON.md)
 * [useProgressiveJSON](./doc/useProgressiveJSON.md)

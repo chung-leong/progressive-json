@@ -29,6 +29,4 @@ async function importJSON(path) {
 ## Options
 
 * `partial` - `<string>` or `<string[]>` The path to the sub-object that can be partially retrieved (Default: `""`)
-* `yieldClosingBrackets` - `<boolean>` If true, the generator will yield arrays containing two items: the JSON object and a string containing the closing brackets used to complete 
-the partial JSON  
 
