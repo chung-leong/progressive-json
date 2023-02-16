@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { generateJSON } from 'progressive-json';
+import { generateJSON, getJSONProgress } from 'progressive-json';
 import * as example from './example.js';
 import './css/App.css';
 
@@ -55,10 +55,10 @@ export default function App() {
     (async () => {
       const spans = [];
       try {
-        const options = { partial, yieldClosingBrackets: true };
         let text;
         const segments = [];
-        for await (const [ object, end ] of generateJSON(source, options)) {
+        for await (const object of generateJSON(source, { partial })) {
+          const { end } = getJSONProgress(object);
           text = JSON.stringify(object, undefined, 2);
           let endOffset = text.length;
           // subtract end brackets (plus indent)
