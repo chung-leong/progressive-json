@@ -70,10 +70,10 @@ export async function* fetchChunks(url, options = {}) {
         if (!m) {
           throw new Error(`Invald content range header: ${range}`);
         }
-        offset = parseInt(m[2]) + 1;
         size = parseInt(m[3]);
         for await (const chunk of generateStreamChunks(res.body)) {
           yield chunk;
+          offset += chunk.length
         }
         if (offset >= size) {
           break;
