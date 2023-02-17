@@ -8,7 +8,7 @@ const FoodDescription = memo(({ info }) => {
       <ul>
         {foodNutrients.map(({ amount, nutrient }, index) => {
           const { name, unitName } = nutrient;
-          return <li key={index}>{name} - {amount}{unitName}</li>
+          return <li key={index}>{name}: {amount} {unitName}</li>
         })}
       </ul>
     </li>
