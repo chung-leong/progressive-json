@@ -45,11 +45,16 @@ export function usePartialJSON(url, options = {}) {
 }
 
 export function useArraySlice(array, start, end, more) {
+  let extra = 0;
+  if (Array.isArray(end)) {
+    extra = end[1]
+    end = end[0];
+  }
   const slice = useMemo(() => array?.slice(start, end), [ array, start, end ]);
   useEffect(() => {
-    if (array?.length < end) {
+    if (array?.length < end + extra) {
       more?.();
     }
-  }, [ array, start, end, more ]);
+  }, [ array, start, end, extra, more ]);
   return slice;
 }
