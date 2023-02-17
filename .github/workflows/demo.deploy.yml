@@ -34,7 +34,7 @@ jobs:
       - name: Install dependencies (example 1)
         run: cd ./examples/food-data; npm ci
       - name: Create production build (example 1)
-        run: cd ./examples/food-data; npm run build; mv ./build ./demo/food-data
+        run: cd ./examples/food-data; npm run build; mv ./build ../../demo/build/food-data
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Upload artifact
