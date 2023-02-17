@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { usePartialJSON } from 'progressive-json';
+import { usePartialJSON, getJSONProgress } from 'progressive-json';
 import FoodDescription from './FoodDescription.js';
 
 export default function ScrollableList({ url, field }) {
   const partial = `${field}.#.foodNutrients`;
   const [ json, more ] = usePartialJSON(url, { partial });
   const list = json[field] ?? [];
+  const { loaded, total } = getJSONProgress(json);
 
   // detect bottom
   const bottom = useRef();
@@ -26,6 +27,7 @@ export default function ScrollableList({ url, field }) {
         return <FoodDescription key={index} info={item} />;
       })}
       <div ref={bottom} className="bottom"></div>
+      <progress value={loaded} max={total} />
     </ul>
   );
 }

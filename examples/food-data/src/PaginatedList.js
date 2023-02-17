@@ -7,8 +7,8 @@ export default function PaginatedList({ url, field }) {
   const partial = field;
   const chunkSize = 250 * 1024;
   const [ json, more ] = usePartialJSON(url, { partial, chunkSize });
-  const { loaded, total } = getJSONProgress(json);
   const list = json[field] ?? [];
+  const { loaded, total } = getJSONProgress(json);
   const perPage = 5;
   const pageTotal = (loaded >= total) ? Math.ceil(list.length / 5) : Infinity;
   const slice = useArraySlice(list, (page - 1) * perPage, [ page * perPage, +1 ], more);
@@ -23,6 +23,7 @@ export default function PaginatedList({ url, field }) {
       {slice.map((item, index) => {
         return <FoodDescription key={index} info={item} />;
       })}
+      <progress value={loaded} max={total} />
     </ul>
   );
 }

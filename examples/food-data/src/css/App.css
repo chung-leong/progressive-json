@@ -26,6 +26,7 @@ html, body {
 }
 
 .App .content-area {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;  
   overflow-y: scroll;
@@ -37,4 +38,14 @@ html, body {
 
 .PaginatedList .navigation button {
   margin: 0.5em;
+}
+
+progress {
+  position: fixed;
+  right: 2.5em;
+  bottom: 1em;
+  opacity: 0.5;
+  width: 200px;
+  transform: rotate(90deg);
+  transform-origin: bottom right;
 }
