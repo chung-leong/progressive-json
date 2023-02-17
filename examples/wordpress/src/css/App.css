@@ -1,2 +1,30 @@
 .App {
+  font-family: Arial, Helvetica, sans-serif;
+  width: 60em;
+}
+
+.ResponseTime {
+  display: inline-block;
+  border: 2px solid #000;
+  margin: 1em;
+  width: 24em;
+}
+
+.ResponseTime .title {
+  font-size: 2em;
+  border-bottom: 1px solid #000;
+  padding: 8px;
+}
+
+.ResponseTime .url {
+  padding: 8px;
+}
+
+.ResponseTime .duration {
+  font-size: 3em;
+  font-weight: bold;
+  padding: 1em;
+  text-align: center;
+  color: #fff;
+  background-color: #000;
 }
