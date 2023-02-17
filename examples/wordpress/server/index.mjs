@@ -18,20 +18,19 @@ const { pathname: buildPath } = new URL('../build', import.meta.url);
     waitForConnections: true,
     connectionLimit: 10,
   });  
-
   const fastify = Fastify({ ignoreTrailingSlash: true, trustProxy: true });
   // use cache control
-  await fastify.register(Caching, { privacy: 'public', expiresIn: 300 });
+  await fastify.register(Caching, { privacy: 'public', expiresIn: 5 });
   // allow CORS
   await fastify.register(CORS, { origin: true });
-  // add sendFile() to reply object
+  // serve static files
   await fastify.register(Static, { root: buildPath });
   // register routes
   fastify.get('/api/posts', async (req, reply) => {
     const page = parseInt(req.query.page ?? '1');
     const perPage = parseInt(req.query.per_page ?? '10');
     const posts = loadPosts(pool, page, perPage);
-    return createJSONStream(posts, undefined, 2);
+    return createJSONStream(posts);
   });
   fastify.get('/api-alt/posts', async (req, reply) => {
     const page = parseInt(req.query.page ?? '1');
@@ -44,7 +43,7 @@ const { pathname: buildPath } = new URL('../build', import.meta.url);
     return list;
   });
   // start listening for requests
-  await fastify.listen({ host: 'localhost', port: 8081 });
+  await fastify.listen({ host: 'localhost', port: 8080 });
 })();
 
 async function* loadPosts(connection, page, perPage) {
@@ -59,17 +58,50 @@ async function* loadPosts(connection, page, perPage) {
   const authors = await mysql.all`
     SELECT * 
     FROM wp_users 
-    WHERE id in (${authorIds})
+    WHERE id IN (${authorIds})
   `;
-  const rows = mysql`
+  const termRelationships = await mysql.all`
+    SELECT term_taxonomy_id, object_id
+    FROM wp_term_relationships 
+    WHERE object_id IN (${postIds})
+    ORDER BY term_order
+  `;
+  const terms = await mysql.all`
+    SELECT term_taxonomy_id, name, slug, taxonomy 
+    FROM wp_term_taxonomy TT INNER JOIN wp_terms T ON T.term_id = TT.term_id
+    WHERE term_taxonomy_id IN (${termRelationships.map(r => r.term_taxonomy_id)})
+  `;
+  const posts = mysql`
     SELECT *
     FROM wp_posts
-    WHERE id in (${postIds})
+    WHERE id IN (${postIds})
     ORDER BY FIELD(id, ${postIds})
   `;
   try {
-    for await (const row of rows) {
-      yield row;
+    for await (const post of posts) {
+      const postAuthor = authors.find(a => a.ID == post.post_author);
+      const postRelationships = termRelationships.filter(r => r.object_id === post.ID);
+      const postTermTaxIds = postRelationships.map(r => r.term_taxonomy_id);
+      const postTerms = terms.filter(t => postTermTaxIds.includes(t.term_taxonomy_id));
+      const postTags = postTerms.filter(t => t.taxonomy === 'post_tag');
+      const postCategories = postTerms.filter(t => t.taxonomy === 'category');
+      yield {
+        id: post.ID,
+        title: post.post_title,
+        date: post.post_date_gtm,
+        content: post.post_content,
+        author: {
+          name: postAuthor?.display_name,
+          nicename: postAuthor?.user_nicename,
+          url: postAuthor?.user_url,
+        },
+        categories: postCategories.map(({ name, slug }) => {
+          return { name, slug };
+        }),
+        tags: postTags.map(({ name, slug }) => {
+          return { name, slug };
+        }),
+      };
     } 
   } catch (err) {
     console.log(err);

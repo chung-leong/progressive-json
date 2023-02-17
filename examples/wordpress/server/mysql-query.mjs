@@ -40,8 +40,10 @@ export function query(connection) {
   }
 
   async function value(strings, ...args) {
-    const rows = await all(strings, ...args);
-    return rows[0]?.values?.()?.[0];
+    const [ row ] = await all(strings, ...args);
+    if (row) {
+      return row.values()[0];
+    }
   }
 
   async function values(strings, ...args) {
@@ -56,7 +58,7 @@ export function query(connection) {
   query.all = all;
   query.columns = columns;
   query.one = one;
-  query.value = query.id = value;
-  query.values = query.ids = values;
+  query.value = value;
+  query.values = values;
   return query;
 }
