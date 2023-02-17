@@ -8,7 +8,7 @@ export default function ScrollableList({ url, field }) {
   const list = json[field] ?? [];
   const { loaded, total } = getJSONProgress(json);
 
-  // detect bottom
+  // call more() when the bottom gets close enough to the viewport
   const bottom = useRef();
   useEffect(() => {
     const observer = new IntersectionObserver(more, {
@@ -23,9 +23,7 @@ export default function ScrollableList({ url, field }) {
   }, [ more ]);
   return (
     <ul className="ScrollableList">
-      {list.map((item, index) => {
-        return <FoodDescription key={index} info={item} />;
-      })}
+      {list.map((item, index) => <FoodDescription key={index} info={item} />)}
       <div ref={bottom} className="bottom"></div>
       <progress value={loaded} max={total} />
     </ul>

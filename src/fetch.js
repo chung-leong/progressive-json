@@ -18,6 +18,10 @@ export async function* fetchJSON(url, options = {}) {
   }
   let restarts = 0;
   for (;;) {
+    if (restarts > 0) {
+      // bypass the cached copy if it has caused a 412 error
+      fetchOptions.cache = 'reload';
+    }
     try {
       const source = fetchChunks(url, fetchOptions);
       for await (const object of generateJSON(source, { partial })) {

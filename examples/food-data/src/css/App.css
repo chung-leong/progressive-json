@@ -34,6 +34,7 @@ html, body {
 
 .PaginatedList .navigation {
   float: right;
+  margin-right: 1em;
 }
 
 .PaginatedList .navigation button {

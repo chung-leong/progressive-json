@@ -3,13 +3,11 @@ import { useArraySlice, usePartialJSON, getJSONProgress } from 'progressive-json
 import FoodDescription from './FoodDescription.js';
 
 export default function PaginatedList({ url, field }) {
-  const [ page, setPage ] = useState(1);
-  const partial = field;
-  const chunkSize = 250 * 1024;
+  const partial = field, chunkSize = 250 * 1024;
   const [ json, more ] = usePartialJSON(url, { partial, chunkSize });
   const list = json[field] ?? [];
   const { loaded, total } = getJSONProgress(json);
-  const perPage = 5;
+  const [ page, setPage ] = useState(1), perPage = 5;
   const pageTotal = (loaded >= total) ? Math.ceil(list.length / 5) : Infinity;
   const slice = useArraySlice(list, (page - 1) * perPage, [ page * perPage, +1 ], more);
 
@@ -20,9 +18,7 @@ export default function PaginatedList({ url, field }) {
         <span>Page {page}</span>
         <button onClick={() => setPage(n => n + 1)} disabled={page >= pageTotal}>&#x25B6;</button>     
       </div>
-      {slice.map((item, index) => {
-        return <FoodDescription key={index} info={item} />;
-      })}
+      {slice.map((item, index) => <FoodDescription key={index} info={item} />)}
       <progress value={loaded} max={total} />
     </ul>
   );
