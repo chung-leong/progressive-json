@@ -1,70 +1,181 @@
-# Getting Started with Create React App
+# WordPress database example
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This example demonstrates the use of [`createJSONStream`](../../doc/createJSONStream.md) on 
+the server-side. We'll examine how streaming a JSON object can help improve response time.
+As a test database, we'll use site data from an instance of WordPress, running alongside 
+MySQL (MariaDB, actually) in Docker.
 
-## Available Scripts
+## Seeing the code in action
 
-In the project directory, you can run:
+Follow these steps if you wish to see the code running on your own computer:
 
-### `npm start`
+1. Run `git clone https://github.com/chung-leong/progressive-json.git`
+2. Run `cd progressive-json/examples/wordpress; npm ci; npm run build`
+3. Run `cd server; docker-compose up -d`
+4. Open browser, go to `http://172.129.0.5` and finish WordPress set-up
+5. In WordPress admin, install the FakerPress plugin.
+6. Use FakerPress to create test users, tags, and posts.
+7. Run `node index.mjs`  
+8. Go to `http://localhost:8080/`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## The server script
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+The [test server](./server/index.mjs) is initiated using an IIAFE. A MySQL connection pool 
+is the first thing we create:  
 
-### `npm test`
+```js
+(async () => {
+  // create MySQL connection pool
+  const pool = createPool({
+    host: '172.129.0.4',
+    user: 'wordpress',
+    password: 'wordpress',
+    database: 'wordpress',
+    waitForConnections: true,
+    connectionLimit: 10,
+  });  
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Then we set up [Fastify](https://www.fastify.io/), along with some useful 
+plugins:
 
-### `npm run build`
+```js
+  const fastify = Fastify({ ignoreTrailingSlash: true, trustProxy: true });
+  // use cache control
+  await fastify.register(Caching, { privacy: 'public', expiresIn: 5 });
+  // allow CORS
+  await fastify.register(CORS, { origin: true });
+  // serve static files
+  await fastify.register(Static, { root: buildPath });
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+We register a route for retrieving posts:
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```js
+  // register routes
+  fastify.get('/api/posts', async (req, reply) => {
+    const page = parseInt(req.query.page ?? '1');
+    const perPage = parseInt(req.query.per_page ?? '10');
+    const posts = loadPosts(pool, page, perPage);
+    return createJSONStream(posts);
+  });
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Here's where `createJSONStream` gets called. Fastify allows us to simply return the stream. With 
+the more archaic Express.js we'd need to do `createJSONStream(posts).pipe(res)`.
 
-### `npm run eject`
+We register a second, alternative route that does things differently:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```js
+  fastify.get('/api-alt/posts', async (req, reply) => {
+    const page = parseInt(req.query.page ?? '1');
+    const perPage = parseInt(req.query.per_page ?? '10');
+    const posts = loadPosts(pool, page, perPage);
+    let list = [];
+    for await (const post of posts ){
+      list.push(post);
+    }
+    return list;
+  });
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Finally the server starts listening for request:
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```js
+  // start listening for requests
+  await fastify.listen({ host: 'localhost', port: 8080 });
+})();
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## The loadPosts function
 
-## Learn More
+[loadPosts](./server/index.js#L49) is an async generator function. The first thing 
+that is it does is create a helper function attach to the database connection that 
+will help us create and execute SQL statement:
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```js
+async function* loadPosts(connection, page, perPage) {
+  const mysql = query(connection);
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Then it query for the matching posts, retrieving just the post ids and author ids:
 
-### Code Splitting
+```js
+  const [ postIds, authorIds ] = await mysql.columns`
+    SELECT ID, post_author 
+    FROM wp_posts 
+    WHERE post_type = 'post'
+    ORDER BY post_date DESC 
+    LIMIT ${perPage} OFFSET ${(page - 1) * perPage}
+  `;
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+With the author ids, it loads the author records:
 
-### Analyzing the Bundle Size
+```js
+  const authors = await mysql.all`
+    SELECT ID, display_name, user_nicename, user_url 
+    FROM wp_users 
+    WHERE ID IN (${authorIds})
+  `;
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Then it loads the tag and category records:
 
-### Making a Progressive Web App
+```js
+  const termRelationships = await mysql.all`
+    SELECT term_taxonomy_id, object_id
+    FROM wp_term_relationships 
+    WHERE object_id IN (${postIds})
+    ORDER BY term_order
+  `;
+  const terms = await mysql.all`
+    SELECT term_taxonomy_id, name, slug, taxonomy 
+    FROM wp_term_taxonomy TT INNER JOIN wp_terms T ON T.term_id = TT.term_id
+    WHERE term_taxonomy_id IN (${termRelationships.map(r => r.term_taxonomy_id)})
+  `;
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Finally, it queries for the content of the posts, using the ids obtained earlier:
 
-### Advanced Configuration
+```js
+  const posts = mysql`
+    SELECT ID, post_title, post_date_gtm, post_content, post_author,  
+    FROM wp_posts
+    WHERE ID IN (${postIds})
+    ORDER BY FIELD(ID, ${postIds})
+  `;
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+Unlike `mysql.columns` and `mysql.all`, which return promises, `mysql` proper returns 
+an object stream, that yields rows as they're fetched from the database. It's async 
+iterable like all Node streams. We iterate through it to attach information from 
+the author, tag, and category records we had fetched earlier:
 
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```js
+  for await (const post of posts) {
+    const postAuthor = authors.find(a => a.ID == post.post_author);
+    const postRelationships = termRelationships.filter(r => r.object_id === post.ID);
+    const postTermTaxIds = postRelationships.map(r => r.term_taxonomy_id);
+    const postTerms = terms.filter(t => postTermTaxIds.includes(t.term_taxonomy_id));
+    const postTags = postTerms.filter(t => t.taxonomy === 'post_tag');
+    const postCategories = postTerms.filter(t => t.taxonomy === 'category');
+    yield {
+      id: post.ID,
+      title: post.post_title,
+      date: post.post_date_gtm,
+      content: post.post_content,
+      author: {
+        name: postAuthor?.display_name,
+        nicename: postAuthor?.user_nicename,
+        url: postAuthor?.user_url,
+      },
+      categories: postCategories.map(({ name, slug }) => {
+        return { name, slug };
+      }),
+      tags: postTags.map(({ name, slug }) => {
+        return { name, slug };
+      }),
+    };
+  } 
+}
+```
