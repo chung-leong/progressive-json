@@ -9,7 +9,7 @@ export default function PaginatedList({ url, field }) {
   const { loaded, total } = getJSONProgress(json);
   const [ page, setPage ] = useState(1), perPage = 5;
   const pageTotal = (loaded >= total) ? Math.ceil(list.length / 5) : Infinity;
-  const slice = useArraySlice(list, (page - 1) * perPage, [ page * perPage, +1 ], more);
+  const slice = useArraySlice(list, (page - 1) * perPage, page * perPage, { more, extra: 1 });
 
   return (
     <ul className="PaginatedList">
