@@ -1,13 +1,13 @@
 .App {
   font-family: Arial, Helvetica, sans-serif;
-  width: 60em;
+  width: 80em;
 }
 
 .ResponseTime {
   display: inline-block;
   border: 2px solid #000;
   margin: 1em;
-  width: 24em;
+  width: 30em;
 }
 
 .ResponseTime .title {

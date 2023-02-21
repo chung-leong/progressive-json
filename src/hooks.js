@@ -16,7 +16,9 @@ export function useProgressiveJSON(url, options) {
     defer(delay);
     fetchOptions.signal = signal;
     await mount();
-    yield fetchJSON(url, fetchOptions);
+    if (url) {
+      yield fetchJSON(url, fetchOptions); 
+    }
   }, [ url ]);
   return object;
 }
@@ -39,22 +41,36 @@ export function usePartialJSON(url, options = {}) {
     fetchOptions.pause = () => eventual.request;
     ref.current.more = on.request;
     await mount();
-    yield fetchJSON(url, fetchOptions);
+    if (url) {
+      yield fetchJSON(url, fetchOptions);
+    }
   }, [ url ]);
   return [ object, ref.current.more ];
 }
 
-export function useArraySlice(array, start, end, more) {
-  let extra = 0;
-  if (Array.isArray(end)) {
-    extra = end[1]
-    end = end[0];
+export function useArraySlice(array, start, end, options = {}) {
+  let extra, more, map, filter;
+  if (typeof(options) === 'function') {
+    more = options;
+    extra = 0;
+  } else {
+    ({ more, map, filter, extra = 0 } = options);
   }
-  const slice = useMemo(() => array?.slice(start, end), [ array, start, end ]);
-  useEffect(() => {
-    if (array?.length < end + extra) {
-      more?.();
+  const ref = useRef();
+  ref.current = { more, map, filter };
+  const slice = useMemo(() => {
+    if (ref.current.filter) {
+      array = array?.filter(ref.current.filter);
     }
-  }, [ array, start, end, extra, more ]);
+    if (ref.current.map) {
+      array = array?.map(ref.current.map);
+    }
+    return array?.slice(start, end);
+  }, [ array, start, end ]);
+  useEffect(() => {
+    if (slice?.length < end + extra) {
+      ref.current.more?.();
+    }
+  }, [ slice, end, extra ]);
   return slice;
 }
