@@ -157,7 +157,7 @@ describe('React hooks', function() {
     })
     it('should invoke callback when array does not have enough items to satisfy preload param', async function() {
       function Test({ array, more }) {
-        const slice = useArraySlice(array, 0, [ 2, +2 ], more);
+        const slice = useArraySlice(array, 0, 2, { extra: 2, more });
         return `${slice}`;
       }
       let called = false;
@@ -165,6 +165,30 @@ describe('React hooks', function() {
       let renderer; 
       await act(() => renderer = new create(el));
       expect(renderer.toJSON()).to.equal('alfa,bravo');
+      expect(called).to.be.true;
+    })
+    it('should use map function', async function() {
+      function Test({ array, more }) {
+        const slice = useArraySlice(array, 0, 2, { map: s => s.length, more });
+        return `${slice}`;
+      }
+      let called = false;
+      const el = createElement(Test, { array: [ 'alfa', 'bravo', 'charlie' ] , more: () => called = true });
+      let renderer; 
+      await act(() => renderer = new create(el));
+      expect(renderer.toJSON()).to.equal('4,5');
+      expect(called).to.be.false;
+    })
+    it('should use filter function', async function() {
+      function Test({ array, more }) {
+        const slice = useArraySlice(array, 0, 2, { filter: s => s.length > 5, map: s => s.length, more });
+        return `${slice}`;
+      }
+      let called = false;
+      const el = createElement(Test, { array: [ 'alfa', 'bravo', 'charlie' ] , more: () => called = true });
+      let renderer; 
+      await act(() => renderer = new create(el));
+      expect(renderer.toJSON()).to.equal('7');
       expect(called).to.be.true;
     })
     it('should not invoke callback when array is long enough', async function() {

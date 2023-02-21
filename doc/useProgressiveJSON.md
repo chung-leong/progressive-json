@@ -31,6 +31,8 @@ function Widget({ url }) {
 `useProgressiveJSON` will throw if the fetch operation encounters an error. Catch the error using 
 a React error boundary.
 
+If `url` is falsy, no attempt to fetch the resource would occur.
+
 The hook relies on [React-seq](https://github.com/chung-leong/react-seq#readme).
 
 SeeConsult [documentation of React-seq](https://github.com/chung-leong/react-seq/blob/main/doc/defer.md#deferment-explained)
