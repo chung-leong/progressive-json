@@ -72,34 +72,39 @@ async function* loadPosts(connection, page, perPage) {
     WHERE term_taxonomy_id IN (${termRelationships.map(r => r.term_taxonomy_id)})
   `;
   const posts = mysql`
-    SELECT ID, post_title, post_date_gtm, post_content, post_author,  
+    SELECT ID, post_title, post_date_gmt, post_content, post_author  
     FROM wp_posts
     WHERE ID IN (${postIds})
     ORDER BY FIELD(ID, ${postIds})
   `;
-  for await (const post of posts) {
-    const postAuthor = authors.find(a => a.ID == post.post_author);
-    const postRelationships = termRelationships.filter(r => r.object_id === post.ID);
-    const postTermTaxIds = postRelationships.map(r => r.term_taxonomy_id);
-    const postTerms = terms.filter(t => postTermTaxIds.includes(t.term_taxonomy_id));
-    const postTags = postTerms.filter(t => t.taxonomy === 'post_tag');
-    const postCategories = postTerms.filter(t => t.taxonomy === 'category');
-    yield {
-      id: post.ID,
-      title: post.post_title,
-      date: post.post_date_gtm,
-      content: post.post_content,
-      author: {
-        name: postAuthor?.display_name,
-        nicename: postAuthor?.user_nicename,
-        url: postAuthor?.user_url,
-      },
-      categories: postCategories.map(({ name, slug }) => {
-        return { name, slug };
-      }),
-      tags: postTags.map(({ name, slug }) => {
-        return { name, slug };
-      }),
-    };
+  try {
+    for await (const post of posts) {
+      const postAuthor = authors.find(a => a.ID == post.post_author);
+      const postRelationships = termRelationships.filter(r => r.object_id === post.ID);
+      const postTermTaxIds = postRelationships.map(r => r.term_taxonomy_id);
+      const postTerms = terms.filter(t => postTermTaxIds.includes(t.term_taxonomy_id));
+      const postTags = postTerms.filter(t => t.taxonomy === 'post_tag');
+      const postCategories = postTerms.filter(t => t.taxonomy === 'category');
+      yield {
+        id: post.ID,
+        title: post.post_title,
+        date: post.post_date_gmt,
+        content: post.post_content,
+        author: {
+          name: postAuthor?.display_name,
+          nicename: postAuthor?.user_nicename,
+          url: postAuthor?.user_url,
+        },
+        categories: postCategories.map(({ name, slug }) => {
+          return { name, slug };
+        }),
+        tags: postTags.map(({ name, slug }) => {
+          return { name, slug };
+        }),
+      };
+    } 
+  } catch (err) {
+    console.error(err);
+    throw err;
   }
 }

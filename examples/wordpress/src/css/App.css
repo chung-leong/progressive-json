@@ -1,6 +1,5 @@
 .App {
   font-family: Arial, Helvetica, sans-serif;
-  width: 80em;
 }
 
 .ResponseTime {
@@ -23,8 +22,12 @@
 .ResponseTime .duration {
   font-size: 3em;
   font-weight: bold;
-  padding: 1em;
+  padding: 1em 0 1em 0;
   text-align: center;
   color: #fff;
   background-color: #000;
+}
+
+.ResponseTime .duration .button {
+  cursor: pointer;
 }
