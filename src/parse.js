@@ -140,7 +140,7 @@ export async function *generateJSON(source, options = {}) {
         }
         // check if the end object isn't empty, which would be only happen when 
         // the JSON is syntactically incorrect (e.g. "{, 5")
-        setJSONProgress(result, { loaded, total, end });
+        setJSONProgress(result, { loaded, total, brackets: end, done: end === '' });
         yield result;
         hasSibling = !empty(result, closingSequence.length);
         prevResult = result;

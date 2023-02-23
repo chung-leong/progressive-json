@@ -58,19 +58,19 @@ export default function App() {
         let text;
         const segments = [];
         for await (const object of generateJSON(source, { partial })) {
-          const { end } = getJSONProgress(object);
+          const { brackets } = getJSONProgress(object);
           text = JSON.stringify(object, undefined, 2);
           let endOffset = text.length;
           // subtract end brackets (plus indent)
-          for (let i = 0; i < end.length; i++) {
+          for (let i = 0; i < brackets.length; i++) {
             endOffset -= 2 + i * 2;
           }
-          segments.push({ endOffset, end });
+          segments.push({ endOffset, brackets });
         }
         let key = 0;
         let startOffset = 0;
-        for (const { endOffset, end } of segments) {
-          const title = `fragment ${key} + ${end.replace(/(.)/g, '$1  ')}`;
+        for (const { endOffset, brackets } of segments) {
+          const title = `fragment ${key} + ${brackets.replace(/(.)/g, '$1  ')}`;
           const style = (key & 1) ? { backgroundColor: '#ddd' } : undefined;
           const segmentText = text.substring(startOffset, endOffset);
           const span = <span {...{key, style, title}}>{segmentText}</span>;

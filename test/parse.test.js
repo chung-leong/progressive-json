@@ -186,17 +186,20 @@ describe('JSON parsing', function() {
           "what": "the heck?"
         }
       `);
-      const percentages = [], ends = [];
+      const percentageList = [], bracketList = [], doneList = [] ;
       const generator = generateJSON(source, { partial: 'hello.#.*' });
       for await (const object of generator) {
-        const { loaded, total, end } = getJSONProgress(object);
-        percentages.push(loaded / total);
-        ends.push(end);
+        const { loaded, total, brackets, done } = getJSONProgress(object);
+        percentageList.push(loaded / total);
+        bracketList.push(brackets);
+        doneList.push(done);
       }
-      expect(ends[0]).to.equal(']}]}');
-      expect(percentages[0]).to.be.above(0.25);
-      expect(ends[1]).to.equal('');
-      expect(percentages[1]).to.equal(1);
+      expect(bracketList[0]).to.equal(']}]}');
+      expect(percentageList[0]).to.be.above(0.25);
+      expect(doneList[0]).to.be.false;
+      expect(bracketList[1]).to.equal('');
+      expect(percentageList[1]).to.equal(1);
+      expect(doneList[1]).to.be.true;
     })
     it('should return an empty object when given an object not from generateJSON', async function() {
       const progress = getJSONProgress({});
