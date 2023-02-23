@@ -18,33 +18,33 @@ export default function App() {
 
 function ResponseTime({ url }) {
   const [ running, setRunning ] = useState(false);
-  const items = useProgressiveJSON(running && url, { delay: 0 });
   const [ startTime, setStartTime ] = useState();
-  const [ firstItemDuration, setFirstItemDuration ] = useState();
-  const [ totalDuration,  setTotalDuration ] = useState();
+  const [ timeToFirst, setTimeToFirst ] = useState();
+  const [ timeToLast,  setTimeToLast ] = useState();
+  const title = /-alt/.test(url) ? 'Non-streaming' : 'Streaming';
   const content = useMemo(() => {
     if (running) {
-      return `${firstItemDuration ?? '-'} / ${totalDuration ?? '-'}`;
+      return `${timeToFirst ?? '-'} / ${timeToLast ?? '-'}`;
     } else {
       return <span className="button" onClick={() => setRunning(true)}>&#x25B6;</span>;
     }
-  }, [ running, firstItemDuration, totalDuration ]);
-  const title = /-alt/.test(url) ? 'Non-streaming' : 'Streaming';
+  }, [ running, timeToFirst, timeToLast ]);
+  const items = useProgressiveJSON(running && url, { delay: 0 });
   useEffect(() => {
     if (running) {
       const now = new Date();
       if (!startTime) {
         setStartTime(now);
-      } else if (!firstItemDuration && items.length > 0) {
-        setFirstItemDuration(`${now - startTime} ms`);
+      } else if (!timeToFirst && items.length > 0) {
+        setTimeToFirst(`${now - startTime} ms`);
       } else {
-        const { end } = getJSONProgress(items);
-        if (!end) {
-          setTotalDuration(`${now - startTime} ms`);
+        const { done } = getJSONProgress(items);
+        if (done) {
+          setTimeToLast(`${now - startTime} ms`);
         }
       }
     }
-  }, [ items, running, startTime, firstItemDuration ]);
+  }, [ items, running, startTime, timeToFirst ]);
   return (
     <div className="ResponseTime">
       <div className="title">{title}</div>

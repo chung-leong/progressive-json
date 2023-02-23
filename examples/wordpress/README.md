@@ -147,7 +147,7 @@ Finally, it queries for the content of the posts, using the ids obtained earlier
 ```
 
 Unlike `mysql.columns` and `mysql.all`, which return promises, `mysql` proper returns 
-an object stream, that yields rows as they're fetched from the database. It's async 
+an object stream yielding rows as they're fetched from the database. It's async 
 iterable like all Node streams. We iterate through it to attach information from 
 the author, tag, and category records we had fetched earlier:
 
@@ -179,3 +179,85 @@ the author, tag, and category records we had fetched earlier:
   } 
 }
 ```
+
+## Initial results
+
+Chrome's development console shows promising results. From the `/api/posts` endpoint we begin to receive data almost immediately:
+
+![/api/posts](./img/screenshot-1.jpg)
+
+It compare very well with our load-everything-first endpoint:
+
+![/api-alt/posts](./img/screenshot-2.jpg)
+
+Right off the bat `createJSONStream` is able to send the open bracket of the JSON array. 
+Obviously, that doesn't help us much. What we want to know is at what point receive 
+usable data. We need to measure that in frontend code.
+
+## Frontend tests
+
+Our [test component](./src/App.js#L19) is very simple. It calls 
+[`useProgressiveJSON`](./doc/useProgressiveJSON.md) to initiate the transfer:
+
+```js
+  const items = useProgressiveJSON(running && url, { delay: 0 });
+```
+
+Then we note the time when we receive the first and the last items in a useEffect hook:  
+
+```js
+  useEffect(() => {
+    if (running) {
+      const now = new Date();
+      if (!startTime) {
+        setStartTime(now);
+      } else if (!timeToFirst && items.length > 0) {
+        setTimeToFirst(`${now - startTime} ms`);
+      } else {
+        const { done } = getJSONProgress(items);
+        if (done) {
+          setTimeToLast(`${now - startTime} ms`);
+        }
+      }
+    }
+  }, [ items, running, startTime, timeToFirst ]);
+```
+
+Before each test we need to manually restart MySQL and clear the disk cache. We will also enable 
+bandwidth throttling to make the tests somewhat more realistic. The results shown below involved 
+a 10mbit connection with 40ms latency.
+
+For the first test we set `per_page` to 10, a typical default value. As you can see, we're getting no improvement at all:
+
+![10 posts](./img/screenshot-10.jpg)
+
+The amount of data is just too small. We start to see an improvement when we bring the number of posts up to 50:
+
+![50 posts](./img/screenshot-50.jpg)
+
+The advantage grows as the number of posts increases:
+
+![100 posts](./img/screenshot-100.jpg)
+
+The second time is what the response time would be if we 
+load the data using `Response.json`. For 250 posts, it's 
+well beyond acceptable:
+
+![250 posts](./img/screenshot-250.jpg)
+
+Thanks to Progressive-JSON, our first-content time remains 
+tolerable even when we don't use streaming on the server 
+side: 
+
+![500 posts](./img/screenshot-500.jpg)
+
+The overhead from loading everything first starts to get 
+too much when `per_page` is 1000: 
+
+![1000 posts](./img/screenshot-1000.jpg)
+
+It becomes too much when `per_page` is 2000:
+
+![2000 posts](./img/screenshot-2000.jpg)
+
+At this point, the amount of data is nearly 10 meg.
