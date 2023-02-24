@@ -52,8 +52,8 @@ The chunk size is set to a unrealistic small size of 16 for demonstration purpos
 
 ## Examples
 
-* [USDA dood data example](./tree/main/examples/food-data) - A website using data from a large static JSON file
-* [WordPress example](./tree/main/examples/wordpress) - Streaming JSON from a MySQL database
+* [USDA dood data example](./examples/food-data) - A website using data from a large static JSON file
+* [WordPress example](./examples/wordpress) - Streaming JSON from a MySQL database
 
 ## API reference
 
