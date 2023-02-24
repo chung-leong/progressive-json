@@ -1,4 +1,4 @@
-# useArraySlice(array, start, end, more)
+# useArraySlice(array, start, end, options = {})
 
 Return a portion of an array, invoking the callback function if there aren't sufficient number of 
 items to satisfy the request

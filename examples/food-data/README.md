@@ -1,10 +1,10 @@
 # Food Data Example
 
-This example demonstrates how you can use [`usePartialJSON`](./doc/usePartialJSON.md) to present 
+This example demonstrates how you can use [`usePartialJSON`](../../doc/usePartialJSON.md) to present 
 data from a large JSON file. We'll examine a pair of React components. One implements continuous
 (or "infinite") scrolling, while the other employs more traditional pagination.
 
-The data source is a 68-meg JSON file file the 
+The data source is a 68-meg JSON file from the 
 [USDA](https://fdc.nal.usda.gov/download-datasets.html) containing information about food nutrients.
 
 ## Live Demo
@@ -14,7 +14,7 @@ Use the buttons at the top to switch between the two component types.
 
 ## ScrollableList
 
-The [`ScrollableList`](../../src/ScrollableList.js:L6) component starts out by calling 
+The [`ScrollableList`](./src/ScrollableList.js:L6) component starts out by calling 
 [`usePartialJSON`](../../doc/usePartialJSON.md):
 
 ```js
@@ -27,7 +27,8 @@ export default function ScrollableList({ url, field }) {
 For some strange reason, the USDA decided to use unique field names for different data sets. 
 For the file in question, `FoodData_Central_survey_food_json_2022-10-28.json`, the field 
 name is "SurveyFoods". `json.SurveyFoods` is an array of objects, each describing a particular 
-food item available on the market. Within each object `foodNutrients`, also an array of objects: 
+food item available on the market. Within each object is `foodNutrients`, also an array of 
+objects: 
 
 ```js
 {
@@ -48,7 +49,7 @@ partially. The nature of the UI means that missing items can be tolerated. When 
 scrolls down, the rest of the list will get fetched.
 
 After obtaining the JSON snapshot from `usePartialJSON`, the component calls 
-[`getJSONProgress`](../../doc/getJSONProgress.md) to get numbers for its progress 
+[`getJSONProgress`](../../doc/getJSONProgress.md) to obtain numbers for its progress 
 bar:
 
 ```js
@@ -75,7 +76,7 @@ Then it creates an [IntersectionObserver](https://developer.mozilla.org/en-US/do
 
 When the user scrolls within one page length of reaching the bottom, the `more` function from 
 `usePartialJSON` gets called, causing another 50K chunk of the JSON file to be loaded through 
-a [HTTP range request](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests).
+an [HTTP range request](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests).
 
 Finally, you see the rendering code:
 
@@ -96,7 +97,7 @@ memoized to improve performance.
 
 ## PaginatedList
 
-The [`PaginatedList`](./PaginatedList.js) starts out largely in the same way, by calling 
+The [`PaginatedList`](./src/PaginatedList.js#L6) starts out largely in the same way, by calling 
 `usePartialJSON`:
 
 ```js
@@ -110,7 +111,7 @@ export default function PaginatedList({ url, field }) {
 As there is no load-on-scroll mechanism here, only the top level array can be partial. We're also 
 using a larger chunk size, enough for five or six food items.
 
-Next, the component sets up some variables for pagination purposes:
+Next, the component sets up some variables for pagination purpose:
 
 ```js
   const [ page, setPage ] = useState(1), perPage = 5;
@@ -121,13 +122,12 @@ Then it uses [`useArraySlice`](../../doc/useArraySlice.md) to obtain the array s
 cooresponding to the current page: 
 
 ```js
-  const slice = useArraySlice(list, (page - 1) * perPage, [ page * perPage, +1 ], more);
+  const slice = useArraySlice(list, (page - 1) * perPage, page * perPage, { more, extra: 1 });
 ```
 
-We give the hook an array of two numbers for the end index. The first number is the index itself, 
-while the second number is extra items desired. Basically, we want to at least one more item than
-needed so that the component has something to show immediately when the user clicks the next 
-button. We want to the jump to feel instantaneous.   
+The `extra` option tells the hook to fetch one extra item than needed. We want to make sure 
+that the component has something to show immediately when the user clicks the next button. 
+Helps make the jump feel instantaneous.   
 
 Finally, the rendering code:
 

@@ -50,6 +50,11 @@ want all the lists to be partial, we would specify "results.#.*".
 
 The chunk size is set to a unrealistic small size of 16 for demonstration purpose. Make it bigger (5K ~ 10K) to get a better sense of how an object would be divided in actual usage. 
 
+## Examples
+
+* [USDA dood data example](./tree/main/examples/food-data) - A website using data from a large static JSON file
+* [WordPress example](./tree/main/examples/wordpress) - Streaming JSON from a MySQL database
+
 ## API reference
 
 #### Client-side:

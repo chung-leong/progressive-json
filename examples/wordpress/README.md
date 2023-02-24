@@ -2,7 +2,7 @@
 
 This example demonstrates the use of [`createJSONStream`](../../doc/createJSONStream.md) on 
 the server-side. We'll examine how streaming a JSON object can help improve response time.
-As a test database, we'll use site data from an instance of WordPress, running alongside 
+As a test database, we'll use site data from an instance of WordPress running alongside 
 MySQL (MariaDB, actually) in Docker.
 
 ## Seeing the code in action
@@ -79,25 +79,25 @@ We register a second, alternative route that does things differently:
   });
 ```
 
-Finally the server starts listening for request:
+Finally the server starts listening for requests:
 
 ```js
   // start listening for requests
   await fastify.listen({ host: 'localhost', port: 8080 });
 })();
+```
 
 ## The loadPosts function
 
 [loadPosts](./server/index.js#L49) is an async generator function. The first thing 
-that is it does is create a helper function attach to the database connection that 
-will help us create and execute SQL statement:
+that it does is create a helper function bound to the database connection:
 
 ```js
 async function* loadPosts(connection, page, perPage) {
   const mysql = query(connection);
 ```
 
-Then it query for the matching posts, retrieving just the post ids and author ids:
+Then it queries for the matching posts, retrieving just the post ids and author ids:
 
 ```js
   const [ postIds, authorIds ] = await mysql.columns`
@@ -147,9 +147,9 @@ Finally, it queries for the content of the posts, using the ids obtained earlier
 ```
 
 Unlike `mysql.columns` and `mysql.all`, which return promises, `mysql` proper returns 
-an object stream yielding rows as they're fetched from the database. It's async 
-iterable like all Node streams. We iterate through it to attach information from 
-the author, tag, and category records we had fetched earlier:
+an object stream yielding rows as they're fetched from the database. It's 
+async-iterable like all Node streams. We iterate through it to attach information from 
+the author, tag, and category records we had obtained earlier:
 
 ```js
   for await (const post of posts) {
@@ -182,17 +182,18 @@ the author, tag, and category records we had fetched earlier:
 
 ## Initial results
 
-Chrome's development console shows promising results. From the `/api/posts` endpoint we begin to receive data almost immediately:
+Chrome's development console shows promising results. From the `/api/posts` endpoint the 
+browser begins receiving data almost immediately:
 
 ![/api/posts](./img/screenshot-1.jpg)
 
-It compare very well with our load-everything-first endpoint:
+It compares very well with our load-everything-first endpoint:
 
 ![/api-alt/posts](./img/screenshot-2.jpg)
 
 Right off the bat `createJSONStream` is able to send the open bracket of the JSON array. 
-Obviously, that doesn't help us much. What we want to know is at what point receive 
-usable data. We need to measure that in frontend code.
+Obviously, a single bracket wouldn't help us much. What we want to know is at what 
+point we receive usable data. We need to measure that in frontend code.
 
 ## Frontend tests
 
@@ -266,8 +267,8 @@ preloading content.
 ## Conclusion
 
 This library is designed to let you preload extra data without paying a penalty in terms 
-of first-content time. It does a decent job in most cases even when no modification was done 
+of first-content time. It does a decent job in most cases even when no modifications was made 
 on the server-side. Implementing streaming does improve things a bit. For database queries 
 that require more time (full-text search, for instance), the improvement to response time 
 could potentially be significantly larger than shown by this example. Streaming also 
-reduces memory usage, which could help your site scale a bit better. 
+reduces memory usage, helping your site scale a bit better.
