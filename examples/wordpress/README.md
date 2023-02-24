@@ -260,4 +260,14 @@ It becomes too much when `per_page` is 2000:
 
 ![2000 posts](./img/screenshot-2000.jpg)
 
-At this point, the amount of data is nearly 10 meg.
+At this point, the amount of data is over 8 meg, pretty excessive for the purpose of 
+preloading content.
+
+## Conclusion
+
+This library is designed to let you preload extra data without paying a penalty in terms 
+of first-content time. It does a decent job in most cases even when no modification was done 
+on the server-side. Implementing streaming does improve things a bit. For database queries 
+that require more time (full-text search, for instance), the improvement to response time 
+could potentially be significantly larger than shown by this example. Streaming also 
+reduces memory usage, which could help your site scale a bit better. 
