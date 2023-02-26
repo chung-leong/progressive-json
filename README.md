@@ -68,7 +68,7 @@ The chunk size is set to a unrealistic small size of 16 for demonstration purpos
 
 #### Server-side:
 
-Server-side functions are found in `"progressive-json/server"'.
+Server-side functions are found in `"progressive-json/server"`.
 
 * [createJSONStream](./doc/createJSONStream.md)
 * [countGenerated](./doc/countGenerated.md)

@@ -37,7 +37,7 @@ objects:
       foodNutrients: [
         { ... },
         { ... },
-        { ... },        .
+        { ... },
       ], 
     }
   ]  
@@ -105,7 +105,7 @@ export default function PaginatedList({ url, field }) {
   const partial = field, chunkSize = 250 * 1024;
   const [ json, more ] = usePartialJSON(url, { partial, chunkSize });
   const list = json[field] ?? [];
-  const { loaded, total } = getJSONProgress(json);
+  const { done, loaded, total } = getJSONProgress(json);
 ```
 
 As there is no load-on-scroll mechanism here, only the top level array can be partial. We're also 
@@ -115,7 +115,7 @@ Next, the component sets up some variables for pagination purpose:
 
 ```js
   const [ page, setPage ] = useState(1), perPage = 5;
-  const pageTotal = (loaded >= total) ? Math.ceil(list.length / 5) : Infinity;
+  const pageTotal = (done) ? Math.ceil(list.length / perPage) : Infinity;
 ```
 
 Then it uses [`useArraySlice`](../../doc/useArraySlice.md) to obtain the array slice 

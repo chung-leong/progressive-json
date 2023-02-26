@@ -7,10 +7,10 @@ Return the number of bytes loaded when the JSON snapshot was created as well as 
 ```js
 function Widget(url) {
   const [ list, more ] = usePartialJSON(url);
-  const { loaded, total } = getJSONProgress(list);
+  const { done } = getJSONProgress(list);
   const perPage = 10;
   // the number of pages is known only if the file is fully loaded
-  const pageCount = (loaded >= total) ? list.length / perPage : Infinity;
+  const pageCount = (done) ? list.length / perPage : Infinity;
 }
 ```
 

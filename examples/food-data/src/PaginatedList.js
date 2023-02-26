@@ -6,9 +6,9 @@ export default function PaginatedList({ url, field }) {
   const partial = field, chunkSize = 250 * 1024;
   const [ json, more ] = usePartialJSON(url, { partial, chunkSize });
   const list = json[field] ?? [];
-  const { loaded, total } = getJSONProgress(json);
+  const { done, loaded, total } = getJSONProgress(json);
   const [ page, setPage ] = useState(1), perPage = 5;
-  const pageTotal = (loaded >= total) ? Math.ceil(list.length / 5) : Infinity;
+  const pageTotal = (done) ? Math.ceil(list.length / perPage) : Infinity;
   const slice = useArraySlice(list, (page - 1) * perPage, page * perPage, { more, extra: 1 });
 
   return (
