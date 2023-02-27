@@ -12,6 +12,12 @@ JSON file incrementally using
 making it practical to host data-driven app on static website providers like 
 [GitHub Pages](https://pages.github.com/). 
 
+## Installation
+
+```sh
+npm  --save-dev install progressive-json
+```
+
 ## Feature set
 
 * An async generator function for retrieving snapshots of JSON objects: [fetchJSON](./doc/fetchJSON.md)
